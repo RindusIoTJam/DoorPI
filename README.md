@@ -3,7 +3,7 @@
 ## Abstract
 
 Use a RaspberryPi Zero W to detect a ring at a remote door bell
-and open the door also remotely. 
+and open also the door remotely. 
 
 ##### Prerequisites
 
@@ -16,8 +16,8 @@ and open the door also remotely.
 
 ### agent
 The agent sits near the bell with the door opening button and 
-detect a ring, sends it to the server and eventually handles a
-open-door event.
+detects a ring, sends it to the server and eventually handles
+a open-door event.
 
 #### Installation
 
