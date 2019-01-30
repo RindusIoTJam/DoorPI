@@ -2,9 +2,12 @@
 
 ## Abstract
 
+Use a RaspberryPi Zero W to detect a ring at a remote door bell
+and open the door also remotely. 
+
 ##### Prerequisites
 
-- Raspberry PI Zero W w/ Raspbian installed and remotely
+- RaspberryPi Zero W w/ Raspbian installed and remotely
   accessable with the to-be-build DoorPI-HAT connected
 - Server where the API component can sit
 - Slack 'bot user oauth access token' 
