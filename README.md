@@ -2,6 +2,13 @@
 
 ## Abstract
 
+##### Prerequisites
+
+- Raspberry PI Zero W w/ Raspbian installed and remotely
+  accessable with the to-be-build DoorPI-HAT connected
+- Server where the API component can sit
+- Slack 'bot user oauth access token' 
+
 ## Components
 
 ### agent
@@ -10,13 +17,6 @@ detect a ring, sends it to the server and eventually handles a
 open-door event.
 
 #### Installation
-
-##### Prerequisites
-
-- Raspberry PI Zero W w/ Raspbian installed and remotely
-  accessable
-
-##### Setup
 
 Connect to the rpi0w by ssh and change to a directory where
 you want the agent to reside, e.g. inside /usr/local with
