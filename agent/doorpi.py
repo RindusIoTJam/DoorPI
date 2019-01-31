@@ -10,12 +10,14 @@ try:
 except ImportError:
     print "ERROR: no ssl support"
 
+config = None
+
 
 def handle_ring():
     """
         Connects to the API to signal a ring and waits for a timeout for further commands.
     """
-    config = load('doorpi.json')
+    global config
     try:
         headers = {
             'X-Door-Id': config['DOOR_ID'],
@@ -38,7 +40,7 @@ def open_door():
     """
         Will open the door.
     """
-    config = load('doorpi.json')
+    global config
 
 
 def load(filename):
@@ -46,15 +48,15 @@ def load(filename):
         Loads a JSON file and returns a config.
     """
     with open(filename, 'r') as settings_file:
-        config = json.load(settings_file)
-    return config
+        _config = json.load(settings_file)
+    return _config
 
 
 def heartbeat():
     """
         Connects to the API to signal a heartbeat.
     """
-    config = load('doorpi.json')
+    global config
     try:
         headers = {
             'X-Door-Id': config['DOOR_ID'],
@@ -77,7 +79,11 @@ def main():
     """
         Does the basic setup and handles a ring.
     """
+    global config
+    config = load('doorpi.json')
+
     schedule.every(5).minutes.do(heartbeat)
+    handle_ring()
 
     ring = Button(2, pull_up=True, hold_time=0.25)
     ring.when_pressed = handle_ring()
