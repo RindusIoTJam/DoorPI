@@ -79,8 +79,7 @@ def main():
     """
     schedule.every(5).minutes.do(heartbeat)
 
-    #ring = Button(12, pull_up=True, bounce_time=60, hold_time=0.25)
-    ring = Button(2)
+    ring = Button(2, pull_up=True, hold_time=0.25)
     ring.when_pressed = handle_ring()
 
     while True:
