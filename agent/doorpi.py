@@ -79,7 +79,10 @@ def main():
     """
     schedule.every(5).minutes.do(heartbeat)
 
-    ring = Button(2, pull_up=True, hold_time=0.25)
+    try:
+        ring = Button(2, pull_up=True, hold_time=0.25)
+    except PinFactoryFallback, e:
+        print "WARNING: ", e.reason
     ring.when_pressed = handle_ring()
 
     while True:
