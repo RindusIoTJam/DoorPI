@@ -28,7 +28,7 @@ the name doorpi-agent
 ```
 $ mkdir /usr/local/doorpi-agent
 $ cd /usr/local/doorpi-agent
-$ git clone git@github.com:RindusIoTJam/dooropener-Rpi0-.git .
+$ git clone https://github.com/RindusIoTJam/dooropener-Rpi0-.git .
 $ virtualenv venv
 $ source venv/bin/activate
 $ cd agent
