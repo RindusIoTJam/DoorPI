@@ -79,10 +79,7 @@ def main():
     """
     schedule.every(5).minutes.do(heartbeat)
 
-    try:
-        ring = Button(2, pull_up=True, hold_time=0.25)
-    except gpiozero.PinFactoryFallback, e:
-        print "WARNING: ", e.reason
+    ring = Button(2, pull_up=True, hold_time=0.25)
     ring.when_pressed = handle_ring()
 
     while True:
