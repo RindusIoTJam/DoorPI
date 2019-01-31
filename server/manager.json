@@ -1,0 +1,10 @@
+{
+  "MANAGER_HOST": "0.0.0.0",
+  "MANAGER_PORT": "8000",
+  "DOORS": {
+    "spain-malaga-pta-habitec-rindus-main": {
+      "DOOR_PW": "4cca3f7e-ecc2-442c-b9a9-2f2416c99822",
+      "API_KEY": "e12e0221-e016-4e4b-a3ea-3c12b51e375c"
+    }
+  }
+}
