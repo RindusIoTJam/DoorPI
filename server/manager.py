@@ -5,6 +5,7 @@ import BaseHTTPServer
 
 config = None
 
+
 class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_HEAD(s):
         s.send_response(200)
@@ -13,11 +14,13 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def do_GET(s):
         """Respond to a GET request."""
-        print s.headers.getheader('X-Door-Id', 'unknown')
         s.send_response(200)
         s.send_header("Content-type", "text/plain")
         s.end_headers()
         s.wfile.write("OK")
+
+    def log_message(s, format, *args):
+        return s.headers.getheader('X-Door-Id', 'unknown')
 
 
 def load(filename):
@@ -48,6 +51,7 @@ def main():
 
     httpd.server_close()
     print time.asctime(), "Server Stops - %s:%s" % (config['MANAGER_HOST'], config['MANAGER_PORT'])
+
 
 if __name__ == "__main__":
     main()
