@@ -12,8 +12,6 @@ except ImportError:
     print "ERROR: no ssl support"
 
 config = None
-COLORED = 1
-UNCOLORED = 0
 
 
 def handle_ring():
@@ -92,7 +90,7 @@ def main():
     schedule.every(5).minutes.do(heartbeat)
     heartbeat()
 
-    ring = Button(2, pull_up=True, hold_time=0.25)
+    ring = Button(2, hold_time=0.25)
     ring.when_pressed = handle_ring()
 
     while True:
