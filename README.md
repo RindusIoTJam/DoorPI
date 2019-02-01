@@ -9,7 +9,8 @@ and open also the door remotely.
 
 - RaspberryPi Zero W w/ Raspbian installed and remotely
   accessable with the to-be-build DoorPI-HAT connected
-- Server where the API component can sit
+- Server where the API component can sit and hide behind
+  a HTTPS terminating server like Apache2 or NGINX.
 - Slack 'bot user oauth access token' 
 - git / python / pip / virtualenv installed on agent and server
 
@@ -39,4 +40,4 @@ $ pip install -r requirements.txt
 Now ...
 
 ### server
-TODO
+

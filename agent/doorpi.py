@@ -27,7 +27,8 @@ def handle_ring():
         }
         req = urllib2.Request(config['API_URL']+"/ring", None, headers)
         response = urllib2.urlopen(req)
-        print 'response headers: "%s"' % response.info()
+        print '%s - ring response code: %s' % (response.info().getparam('Date'), response.getcode())
+        #print 'response headers: "%s"' % response.info()
 
     except IOError, e:
         if hasattr(e, 'code'):  # HTTPError
@@ -66,7 +67,8 @@ def heartbeat():
         }
         req = urllib2.Request(config['API_URL']+"/ping", None, headers)
         response = urllib2.urlopen(req)
-        print 'response headers: "%s"' % response.info()
+        print '%s - ping response code: %s' % (response.info().getparam('Date'), response.getcode())
+        #print 'response headers: "%s"' % response.info()
 
     except IOError, e:
         if hasattr(e, 'code'):  # HTTPError
