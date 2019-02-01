@@ -1,4 +1,5 @@
 import json
+import os
 import schedule
 import time
 import urllib2
@@ -27,8 +28,7 @@ def handle_ring():
         }
         req = urllib2.Request(config['API_URL']+"/ring", None, headers)
         response = urllib2.urlopen(req)
-        print '%s - ring response code: %s' % (response.info().getparam('Date'), response.getcode())
-        #print 'response headers: "%s"' % response.info()
+        print '%s - ring response code: %s' % (response.info().getheader('Date'), response.getcode())
 
     except IOError, e:
         if hasattr(e, 'code'):  # HTTPError
@@ -52,6 +52,7 @@ def load(filename):
     """
     with open(filename, 'r') as settings_file:
         _config = json.load(settings_file)
+
     return _config
 
 
@@ -67,8 +68,7 @@ def heartbeat():
         }
         req = urllib2.Request(config['API_URL']+"/ping", None, headers)
         response = urllib2.urlopen(req)
-        print '%s - ping response code: %s' % (response.info().getparam('Date'), response.getcode())
-        #print 'response headers: "%s"' % response.info()
+        print '%s - ping response code: %s' % (response.info().getheader('Date'), response.getcode())
 
     except IOError, e:
         if hasattr(e, 'code'):  # HTTPError
@@ -86,8 +86,11 @@ def main():
     global config
     config = load('doorpi.json')
 
+    if os.path.isfile('local_settings.json'):
+        config = load('local_settings.json')
+
     schedule.every(5).minutes.do(heartbeat)
-    handle_ring()
+    heartbeat()
 
     ring = Button(2, pull_up=True, hold_time=0.25)
     ring.when_pressed = handle_ring()
