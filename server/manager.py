@@ -20,7 +20,7 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         s.wfile.write("OK")
 
     def log_message(s, format, *args):
-        print s.headers.getheader('X-Door-Id', 'unknown')
+        print time.asctime(), "%s%s" % (s.headers.getheader('X-Door-Id', 'unknown'), s.path)
         return
 
 
