@@ -1,9 +1,17 @@
+import epd2in13b
 import json
+import os
 import schedule
+import socket
 import time
 import urllib2
 
+from epd2in13b import ROTATE_90
 from gpiozero import Button
+from PIL import Image
+from PIL import ImageFont
+from PIL import ImageDraw
+from subprocess import check_output
 
 try:
     import ssl
@@ -11,6 +19,8 @@ except ImportError:
     print "ERROR: no ssl support"
 
 config = None
+COLORED = 1
+UNCOLORED = 0
 
 
 def handle_ring():
@@ -75,12 +85,51 @@ def heartbeat():
             raise
 
 
+def update_epaper(text):
+    epd = epd2in13b.EPD()
+    epd.init()
+    epd.set_rotate(ROTATE_90)
+
+    # clear the frame buffer
+    frame_black = [0xFF] * (epd.width * epd.height / 8)
+    frame_red   = [0xFF] * (epd.width * epd.height / 8)
+
+
+    h1 = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeSansBold.ttf', 20)
+    h2 = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeSansBold.ttf', 16)
+
+    epd.draw_filled_rectangle(frame_red, 0, 0, 212, 28, COLORED);
+    commit = check_output(["git rev-parse --short HEAD"]).rstrip()
+    epd.draw_string_at(frame_red, 7,  4, "DoorPI v.0.0.0-"+commit, h1, UNCOLORED)
+    epd.draw_rectangle(frame_black, 0, 29, 212, 30, COLORED);
+
+    if text is not None:
+        epd.draw_string_at(frame_black, 15, 38, "Last ring: "+text, h2, COLORED)
+
+    gw = os.popen("ip -4 route show default").read().split()
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect((gw[2], 0))
+    ipaddr = s.getsockname()[0]
+    epd.draw_string_at(frame_black, 15, 58, "NETIP: " + ipaddr, h2, COLORED)
+
+    scanoutput = check_output(["iwgetid"])
+    for line in scanoutput.split():
+        ssid = line.split(':')[-1].replace('"', '')
+    epd.draw_string_at(frame_black, 16, 78, "WLAN: " + ssid, h2, COLORED)
+
+    # display the frames
+    epd.display_frame(frame_black, frame_red)
+    epd.sleep()
+
+
 def main():
     """
         Does the basic setup and handles a ring.
     """
     global config
     config = load('doorpi.json')
+
+    update_epaper(None)
 
     schedule.every(5).minutes.do(heartbeat)
     handle_ring()
