@@ -35,10 +35,16 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             Respond to a GET request.
         """
         if self.headers.getheader('X-Door-Id', None) is None:
-            self.send_error(400, "Bad Request")
+            self.send_response(400)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write("Bad Request")
         else:
             if not self.is_Auth():
-                self.send_error(403, "Forbidden")
+                self.send_response(403)
+                self.send_header("Content-type", "text/plain")
+                self.end_headers()
+                self.wfile.write("Forbidden")
             else:
                 """ 
                     Lets start the party...
