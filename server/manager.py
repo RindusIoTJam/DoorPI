@@ -48,14 +48,51 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             else:
                 """ 
                     Lets start the party...
+                    0. check request (ping/status/log/ring)
                     1. Announce ring
                     2. Wait with timeout for open command
                     3. Send Command w/ DoorPw OR OK
                 """
-                self.send_response(200)
-                self.send_header("Content-type", "text/plain")
-                self.end_headers()
-                self.wfile.write("OK")
+                self.handle_event()
+
+    def handle_ping(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write("OK")
+
+    def handle_status(self):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write("OK")
+
+    def handle_log(self):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write("OK")
+
+    def handle_ring(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write("OK")
+
+    def handle_event(self):
+        if self.path == "/ping":
+            self.handle_ping()
+        elif self.path == "/status":
+            self.handle_status()
+        elif self.path == "/log":
+            self.handle_log()
+        elif self.path == "/ring":
+            self.handle_ring()
+        else:
+            self.send_response(400)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write("Bad Request")
 
     def log_message(self, format, *args):
         print "[%s]" % self.date_time_string(), \
