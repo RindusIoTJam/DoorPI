@@ -1,4 +1,6 @@
 {
+  "AGENT_HOST": "0.0.0.0",
+  "AGENT_PORT": "8080",
   "DOOR_ID": "spain-malaga-pta-habitec-rindus-main",
   "DOOR_PW": "4cca3f7e-ecc2-442c-b9a9-2f2416c99822",
   "API_URL": "https://iot.rindus.de/service/doorpi",

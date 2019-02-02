@@ -1,8 +1,10 @@
 import json
 import os
 import schedule
+import threading
 import time
 import urllib2
+import BaseHTTPServer
 
 from gpiozero import Button
 
@@ -77,6 +79,36 @@ def heartbeat():
             raise
 
 
+class HeartbeatThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.ping = True
+
+    def run(self):
+        schedule.every(5).minutes.do(heartbeat)
+        while self.ping:
+            schedule.run_pending()
+            time.sleep(1)
+
+    def stop(self):
+        self.ping = False
+
+
+class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write("OK")
+
+    def log_message(self, format, *args):
+        return
+
 def main():
     """
         Does the basic setup and handles a ring.
@@ -87,16 +119,25 @@ def main():
     if os.path.isfile('local_settings.json'):
         config = load('local_settings.json')
 
-    schedule.every(5).minutes.do(heartbeat)
     heartbeat()
 
     ring = Button(2, hold_time=0.25)
     ring.when_pressed = handle_ring()
 
-    while True:
-        schedule.run_pending()
-        time.sleep(5)
+    heartbeat_thread = HeartbeatThread()
+    heartbeat_thread.start()
 
+    server_class = BaseHTTPServer.HTTPServer
+
+    httpd = server_class((config['AGENT_HOST'], int(config['AGENT_PORT'])), RequestHandler)
+
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+    httpd.server_close()
+    heartbeat_thread.stop()
 
 if __name__ == "__main__":
     main()

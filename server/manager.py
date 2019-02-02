@@ -2,9 +2,7 @@ import json
 import time
 import BaseHTTPServer
 
-
 config = None
-
 
 
 class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
