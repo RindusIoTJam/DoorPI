@@ -18,7 +18,7 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         except KeyError:
             pass
 
-        if api_key == self.headers.getheader('X-Api-Key', None):
+        if api_key == self.headers.getheader('X-Api-Key', "Wrong"):
             return True
         else:
             return False
@@ -74,6 +74,8 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def handle_ring(self):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
+        # Post to Slack and wait up to 60 seconds for response
+
         self.end_headers()
         self.wfile.write("OK")
 

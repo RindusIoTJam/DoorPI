@@ -46,6 +46,8 @@ def handle_ring(simulated=None):
         response = urllib2.urlopen(req, timeout=60)
         print '%s - ring response code: %s' % (response.info().getheader('Date'), response.getcode())
 
+        # TODO: if response is OK then open
+
     except IOError, e:
         if hasattr(e, 'code'):  # HTTPError
             print 'http error code: ', e.code
@@ -55,21 +57,23 @@ def handle_ring(simulated=None):
             raise
 
 
-def local_open_door(request):
-    open_door(request, True)
+def local_open_door():
+    open_door(True)
 
-def open_door(request, local=None):
+def open_door(local=None):
     """
         Will open the door.
     """
     global config
-    if local is None:
-        config['LAST_OPEN'] = "%s (Local)" % date_time_string()
+
+    if local is not None:
         print "%s - LOCAL OPEN" % date_time_string()
     else:
-        config['LAST_OPEN'] = "%s (Remote)" % date_time_string()
-        print "%s - REMOTE OPEN" % date_time_string()
+        print "%s - REMOTE OPEN DENIED" % date_time_string()
 
+    config['LAST_OPEN'] = "%s (Local)" % date_time_string()
+
+    # TODO: OPEN DOOR
 
 def load(filename):
     """
@@ -92,7 +96,7 @@ def heartbeat():
             'X-Api-Key': config['API_KEY']
         }
         req = urllib2.Request(config['API_URL']+"/ping", None, headers)
-        response = urllib2.urlopen(req, timeout=1)
+        response = urllib2.urlopen(req, timeout=5)
         print '%s - ping response code: %s' % (response.info().getheader('Date'), response.getcode())
 
     except IOError, e:
@@ -155,7 +159,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             pass
         try:
             if message['open'] is not None:
-                open_door(self)
+                local_open_door()
         except KeyError:
             pass
         self.do_GET()
@@ -207,8 +211,6 @@ def main():
     global emulation
 
     config = load('doorpi.json')
-    #config['LAST_RING'] = ""
-    #config['LAST_OPEN'] = ""
 
     if os.path.isfile('local_settings.json'):
         config = load('local_settings.json')
