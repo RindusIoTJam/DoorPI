@@ -10,7 +10,7 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def is_Auth(self):
         """
-            Simple authentication agains DOORS config.
+            Simple door authentication by Header to be delivered
         """
         api_key = None
 
@@ -79,9 +79,12 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             2. Wait with timeout for open command
             3. Send OK or timeout
 
+            TODO: auto-open timeout while working hours?
             TODO: Post to Slack and wait up to X seconds for response
         """
+        # this is "auto-open" after 5 seconds for testing only
         time.sleep(5)
+        # As soon as the 200_OK is send the door opens.
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
