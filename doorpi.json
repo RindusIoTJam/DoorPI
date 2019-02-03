@@ -1,12 +1,10 @@
 {
   "AGENT_HOST":      "127.0.0.1",
   "AGENT_PORT":      "8080",
-  "DOOR_ID":         "your-mother",
-  "DOOR_TO":         "60",
+  "DOOR_NAME":       "your-mother",
+  "OPEN_TIMEOUT":    "60",
   "GPIO_RING":       "18",
   "GPIO_OPEN":       "23",
-  "MANAGER_API_URL": "https://example.net/service/doorpi",
-  "MANAGER_API_KEY": "fat-ugly",
   "SLACK_WEBHOOK":   "blind/deaf/dumb",
   "SLACK_CHANNEL":   "#doors"
 }

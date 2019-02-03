@@ -9,50 +9,16 @@ and open also the door remotely.
 
 - RaspberryPi Zero W w/ Raspbian installed and remotely
   accessable with the to-be-build DoorPI-HAT connected
-- Server where the API component can sit and hide behind
-  a HTTPS terminating server like Apache2 or NGINX.
-- Slack 'bot user oauth access token' 
+- Slack 'webhook access token' 
 - git / python / pip / virtualenv installed on agent and server
 
-## Components
+## Agent
 
-### Server
-The manager handles incoming ping, ring and open events.
-
-#### Installation
-
-Connect to the server by ssh and change to a directory where
-you want the manager to reside, e.g. inside `/usr/local` with
-the name doorpi-manager
-
-```Bash
-$ mkdir /usr/local/doorpi-manager
-$ cd /usr/local/doorpi-manager
-$ git clone https://github.com/RindusIoTJam/dooropener-Rpi0-.git .
-$ virtualenv venv
-$ source venv/bin/activate
-$ cd manager
-$ pip install -r requirements.txt
-```
-
-Setup the http listening host/port for incoming requests as well
-as the doors this manager is supposed to handle. It is highly
-recommended to run the manager behind a Apache or NGINX that
-terminate incoming requests by https and forward them to the
-manager.
-
-When a `BOT_TKN` (See _Local Settings_) for an agent is given,
-the manager spawns a bot that connects to the given Slack workspace
-and announces ring evens wherever the bot is invited into a channel.
-
-The manager can be started  by `python manager.py`.
-
-### Agent
 The agent sits near the bell with the door opening button and 
-detects a ring, sends it to the server and eventually handles
+detects a ring, sends a message to slack and eventually handles
 a open-door event.
 
-#### Installation
+### Installation
 
 Connect to the rpi0w by ssh and change to a directory where
 you want the agent to reside, e.g. inside `/usr/local` with
@@ -69,14 +35,11 @@ $ pip install -r requirements.txt
 ```
 
 Now create a file `local_settings.json` that has at least a unique
-`DOOR_ID` and `API_KEY` and as well points to the manager installation
-(`API_URL`). See _Local Settings_ for more options.
+`DOOR_NAME`. See _Local Settings_ for more options.
 
 ```JSON
 {
-  "DOOR_ID": "spain-malaga-cartama-elsexmo-ackermann-main",
-  "MANAGER_API_URL": "http://127.0.0.1:8000",
-  "MANAGER_API_KEY": "e12e0221-e016-4e4b-a3ea-3c12b51e335c"
+  "DOOR_NAME": "spain-malaga-cartama-elsexmo-ackermann-main",
 }
 ```
 
@@ -91,37 +54,22 @@ that is ignored by `.gitignore` to overwrite setup. E.g.
 
 ```JSON
 {
-  "DOOR_ID": "spain-malaga-pta-habitec-rindus-main",
-  "MANAGER_API_URL": "https://iot.rindus.de/services/smart-portero",
-  "MANAGER_API_KEY": "e12e0221-e016-4f4b-a3ea-3c12b51e335c"
+  "DOOR_NAME": "spain-malaga-pta-habitec-rindus-main",
 }
 ```
 
 ### Agent
 
-| JSON key | Description |Default |
-| -------- | ------- | ------ |
-| `AGENT_HOST` | Listen address of the agents web interface. Set to `0.0.0.0` to listen on all available addresses. | `127.0.0.1` |
-| `AGENT_PORT` | Listen port of the agents web interface. | `8080` |
-| `DOOR_ID`    | An identifier of this door agent. | `your-mother` |
-| `DOOR_TO`    | Timeout to wait for an open response on a ring event. | `60` |
-| `GPIO_RING`  | GPIO in-pin where the ring is detected. | `18` |
-| `GPIO_OPEN`  | GPIO out-pin the the door-open relay connects. | `23` |
-| `MANAGER_API_URL` | URL of the manager installation. | `https://example.net/service/doorpi` |
-| `MANAGER_API_KEY` | API-Key to send with the events. | `fat-ugly` |
+| JSON key        | Description |Default |
+| --------------- | ----------- | ------ |
+| `AGENT_HOST`    | Listen address of the agents web interface. Set to `0.0.0.0` to listen on all available addresses. | `127.0.0.1` |
+| `AGENT_PORT`    | Listen port of the agents web interface. | `8080` |
+| `DOOR_NAME`     | An identifier of this door agent. | `your-mother` |
+| `OPEN_TIMEOUT`  | Timeout accept an open response on a ring event. | `60` |
+| `GPIO_RING`     | GPIO in-pin where the ring is detected. | `18` |
+| `GPIO_OPEN`     | GPIO out-pin the the door-open relay connects. | `23` |
 | `SLACK_WEBHOOK` | If set this webhook will be used to post a ring message to Slack | |
 | `SLACK_CHANNEL` | Slack channel to post to. The default channel will be used if unset. | |
-
-### Manager
-
-| JSON key | Description |Default |
-| -------- | ------- | ------ |
-| `MANAGER_HOST` | The listen address of the managers API interface. Set to `0.0.0.0` to listen on all available addresses. | `127.0.0.1` |
-| `MANAGER_PORT` | The listen port of the managers API interface. | `8000` |
-| `DOORS` | A list of door installations to be handled. | Example `your-mother` door. |
-| `DOORS`.`door-id` | An identifier of an door agent. | |
-| `DOORS`.`door-id`.`API_KEY` | A API-Key the door has to send to be authenticated. | |
-| `DOORS`.`door-id`.`BOT_TKN` | The SlackBot token to use for the bot. | |
 
 ## Development
 
