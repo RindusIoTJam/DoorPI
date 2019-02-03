@@ -30,7 +30,6 @@ $ cd /usr/local/doorpi-agent
 $ git clone https://github.com/RindusIoTJam/dooropener-Rpi0-.git .
 $ virtualenv venv
 $ source venv/bin/activate
-$ cd agent
 $ pip install -r requirements.txt
 ```
 
