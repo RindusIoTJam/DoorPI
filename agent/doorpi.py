@@ -1,5 +1,7 @@
 import json
 import os
+import random
+import string
 import schedule
 import threading
 import time
@@ -20,31 +22,71 @@ try:
 except ImportError:
     print "ERROR: no ssl support"
 
-config = None
-door   = None
-
+config  = None
+door    = None
+manager = None
 
 def handle_ring(simulated=False):
     """
         Connects to the API to signal a ring and waits for a timeout for further commands.
     """
     global config
+
     if simulated is True:
         config['LAST_RING'] = "%s (Simulated)" % date_time_string()
     else:
         config['LAST_RING'] = "%s" % date_time_string()
 
     try:
-        headers = {
-            'X-Door-Id': config['DOOR_ID'],
-            'X-Api-Key': config['API_KEY']
-        }
-        req = urllib2.Request(config['API_URL']+"/ring", None, headers)
-        response = urllib2.urlopen(req, timeout=int(config['DOOR_TO']))
-        print '%s - ring response code: %s' % (response.info().getheader('Date'), response.getcode())
+        x = config['SLACK_WEBHOOK']
+        r = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+        config['RANDOM'] = r
+        post_to_slack('RING, click <%s/%s|here> to open.' % (config['SLACK_OPENURL'], r))
 
-        if response.getcode() == 200:
-            open_door()
+    except KeyError:
+        if manager is not None and manager != "":
+            try:
+                headers = {
+                    'X-Door-Id': config['DOOR_ID'],
+                    'X-Api-Key': config['MANAGER_API_KEY']
+                }
+                req = urllib2.Request(config['MANAGER_API_URL']+"/ring", None, headers)
+                response = urllib2.urlopen(req, timeout=int(config['DOOR_TO']))
+                print '%s - ring response code: %s' % (response.info().getheader('Date'), response.getcode())
+
+                if response.getcode() == 200:
+                    open_door()
+
+            except IOError, e:
+                if hasattr(e, 'code'):  # HTTPError
+                    print 'http error code: ', e.code
+                elif hasattr(e, 'reason'):  # URLError
+                    print "can't connect, reason: ", e.reason
+                else:
+                    pass
+
+
+def post_to_slack(text):
+    """
+        Connects to the API to signal a ring and waits for a timeout for further commands.
+    """
+    global config
+
+    try:
+        payload = {
+            'text':       '%s' % text,
+            'channel':    '%s' % config['SLACK_CHANNEL'],
+            'username':   '%s' % config['DOOR_ID'],
+            'icon_emoji': ':door:',
+            'link_names': 1,
+            "attachments": [
+            ]
+        }
+        req = urllib2.Request('https://hooks.slack.com/services/%s' % config['SLACK_WEBHOOK'],
+                              data=json.dumps(payload),
+                              headers={'Content-Type': 'application/json'})
+        response = urllib2.urlopen(req, timeout=10)
+        print '%s - slack response: %s' % (date_time_string(), response.getcode())
 
     except IOError, e:
         if hasattr(e, 'code'):  # HTTPError
@@ -55,19 +97,31 @@ def handle_ring(simulated=False):
             pass
 
 
-def open_door(local=False):
+def slack_open_door(request):
+    post_to_slack("Door opened ....")
+    open_door(True,True)
+    request.do_GET()
+
+def open_door(local=False, slack=False):
     """
         Will open the door.
     """
     global config
     global door
 
+    config['RANDOM'] = '_'
+
     if local is True:
-        print "%s - LOCAL OPEN" % date_time_string()
-        config['LAST_OPEN'] = "%s (Local)" % date_time_string()
-        # TODO: Send event to manager to record that door was opened locally by agent wui.
+        if slack is True:
+            print "%s - LOCAL OPEN (SLACK)" % date_time_string()
+            config['LAST_OPEN'] = "%s (Slack)" % date_time_string()
+            # TODO: Send event to manager to record that door was opened locally by agent wui.
+        else:
+            print "%s - LOCAL OPEN (WUI)" % date_time_string()
+            config['LAST_OPEN'] = "%s (Local)" % date_time_string()
+            # TODO: Send event to manager to record that door was opened locally by agent wui.
     else:
-        print "%s - REMOTE OPEN " % date_time_string()
+        print "%s - REMOTE OPEN" % date_time_string()
         config['LAST_OPEN'] = "%s (Remote)" % date_time_string()
 
     # TODO: Open the door by flipping a GPIO pin on the PI
@@ -75,6 +129,7 @@ def open_door(local=False):
         door.on()
         time.sleep(1)
         door.off()
+
 
 def load(filename):
     """
@@ -91,22 +146,25 @@ def heartbeat():
         Connects to the API to signal a heartbeat.
     """
     global config
-    try:
-        headers = {
-            'X-Door-Id': config['DOOR_ID'],
-            'X-Api-Key': config['API_KEY']
-        }
-        req = urllib2.Request(config['API_URL']+"/ping", None, headers)
-        response = urllib2.urlopen(req, timeout=5)
-        print '%s - ping response code: %s' % (response.info().getheader('Date'), response.getcode())
+    global manager
 
-    except IOError, e:
-        if hasattr(e, 'code'):  # HTTPError
-            print 'http error code: ', e.code
-        elif hasattr(e, 'reason'):  # URLError
-            print "can't connect, reason: ", e.reason
-        else:
-            raise
+    if manager is not None and manager != "":
+        try:
+            headers = {
+                'X-Door-Id': config['DOOR_ID'],
+                'X-Api-Key': config['MANAGER_API_KEY']
+            }
+            req = urllib2.Request(config['MANAGER_API_URL']+"/ping", None, headers)
+            response = urllib2.urlopen(req, timeout=5)
+            print '%s - ping response code: %s' % (response.info().getheader('Date'), response.getcode())
+
+        except IOError, e:
+            if hasattr(e, 'code'):  # HTTPError
+                print 'http error code: ', e.code
+            elif hasattr(e, 'reason'):  # URLError
+                print "can't connect, reason: ", e.reason
+            else:
+                raise
 
 
 def date_time_string(timestamp=None):
@@ -168,38 +226,52 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def do_GET(self):
         global config
+        global crlf
+
+        if self.path == '/open/%s' % config['RANDOM']:
+            slack_open_door(self)
+            return
+
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
+
         if self.path == '/favicon.ico':
             return
-        self.wfile.write("<html>"
-                         "<body>"
-                         "<h1>%s</h1>" % config['DOOR_ID'] +
-                         "<table border='0'>"
-                         "<tr><td>Current time: </td><td>%s</td></tr>" % self.date_time_string())
+
+        self.wfile.write('<html>\n'
+                         '<head>\n'
+                         '<title>%s</title>\n' % config['DOOR_ID'] +
+                         '</head>\n'
+                         '<body>\n'
+                         '<h1>%s</h1>\n' % config['DOOR_ID'] +
+                         '<table border="0">\n'
+                         '<tr><td>Current time: </td><td>%s</td></tr>\n' % self.date_time_string() +
+                         '<tr><td colspan="3"><hr /></td></tr>\n')
 
         try:
-            self.wfile.write("<tr><td>Last ring:    </td><td>%s</td></tr>" % config['LAST_RING'])
+            self.wfile.write('<tr><td>Last ring: </td><td>%s</td></tr>\n' % config['LAST_RING'])
         except KeyError:
-            self.wfile.write("<tr><td>Last ring:    </td><td>unknown</td></tr>")
+            self.wfile.write('<tr><td>Last ring: </td><td>unknown</td></tr>\n')
 
         try:
-            self.wfile.write("<tr><td>Last open:    </td><td>%s</td></tr>" % config['LAST_OPEN'])
+            self.wfile.write('<tr><td>Last open: </td><td>%s</td></tr>\n' % config['LAST_OPEN'])
         except KeyError:
-            self.wfile.write("<tr><td>Last open:    </td><td>unknown</td></tr>")
+            self.wfile.write('<tr><td>Last open: </td><td>unknown</td></tr>\n')
 
-        self.wfile.write("</table>"
-                         "<form action='/' method='post'>")
-        self.wfile.write("<input type='submit' value='reload page' name='reload'/>")
+        self.wfile.write('<tr><td colspan="3"><hr /></td></tr>\n'
+                         '</table>\n'
+                         '<form action="/" method="post">\n'
+                         '<input type="submit" value="reload page" name="reload"/>\n')
+
         # TODO: Remove development hack
         if emulation:
-            self.wfile.write("<input type='submit' value='simulate ring' name='ring'/>")
-        self.wfile.write("<input type='submit' value='open door' name='open'/>"
-                         "</form>"
-                         "</body>"
-                         "</html>"
-                         )
+            self.wfile.write('<input type="submit" value="simulate ring" name="ring"/>\n')
+
+        self.wfile.write("<input type='submit' value='open door' name='open'/>\n"
+                         '</form>\n'
+                         '</body>\n'
+                         '</html>\n')
 
     def log_message(self, log_format, *args):
         # overwritten to suppress any output
@@ -215,11 +287,10 @@ def main():
     global door
 
     config = load('doorpi.json')
+    config['RANDOM'] = '_'
 
     if os.path.isfile('local_settings.json'):
         config.update(load('local_settings.json'))
-
-    heartbeat()
 
     # TODO: Remove development hack (maybe)
     if not emulation:
@@ -227,6 +298,12 @@ def main():
         ring = Button(int(config['GPIO_RING']), hold_time=0.25)
         ring.when_pressed = handle_ring
 
+    try:
+        manager = config['MANAGER_API_URL']
+    except KeyError:
+        pass
+
+    heartbeat()
     heartbeat_thread = HeartbeatThread()
     heartbeat_thread.start()
 
@@ -240,6 +317,7 @@ def main():
         pass
 
     httpd.server_close()
+
     heartbeat_thread.stop()
 
 

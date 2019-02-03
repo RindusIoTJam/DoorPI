@@ -75,8 +75,8 @@ Now create a file `local_settings.json` that has at least a unique
 ```JSON
 {
   "DOOR_ID": "spain-malaga-cartama-elsexmo-ackermann-main",
-  "API_URL": "http://127.0.0.1:8000",
-  "API_KEY": "e12e0221-e016-4e4b-a3ea-3c12b51e335c"
+  "MANAGER_API_URL": "http://127.0.0.1:8000",
+  "MANAGER_API_KEY": "e12e0221-e016-4e4b-a3ea-3c12b51e335c"
 }
 ```
 
@@ -92,8 +92,8 @@ that is ignored by `.gitignore` to overwrite setup. E.g.
 ```JSON
 {
   "DOOR_ID": "spain-malaga-pta-habitec-rindus-main",
-  "API_URL": "https://iot.rindus.de/services/smart-portero",
-  "API_KEY": "e12e0221-e016-4f4b-a3ea-3c12b51e335c"
+  "MANAGER_API_URL": "https://iot.rindus.de/services/smart-portero",
+  "MANAGER_API_KEY": "e12e0221-e016-4f4b-a3ea-3c12b51e335c"
 }
 ```
 
@@ -101,14 +101,16 @@ that is ignored by `.gitignore` to overwrite setup. E.g.
 
 | JSON key | Description |Default |
 | -------- | ------- | ------ |
-| `AGENT_HOST` | The listen address of the agents web interface. Set to `0.0.0.0` to listen on all available addresses. | `127.0.0.1` |
-| `AGENT_PORT` | The listen port of the agents web interface. | `8080` |
+| `AGENT_HOST` | Listen address of the agents web interface. Set to `0.0.0.0` to listen on all available addresses. | `127.0.0.1` |
+| `AGENT_PORT` | Listen port of the agents web interface. | `8080` |
 | `DOOR_ID`    | An identifier of this door agent. | `your-mother` |
 | `DOOR_TO`    | Timeout to wait for an open response on a ring event. | `60` |
 | `GPIO_RING`  | GPIO in-pin where the ring is detected. | `18` |
 | `GPIO_OPEN`  | GPIO out-pin the the door-open relay connects. | `23` |
-| `API_URL`    | The URL of the manager installation. | `https://example.net/service/doorpi` |
-| `API_KEY`    | The API-Key to send with the events. | `fat-ugly` |
+| `MANAGER_API_URL` | URL of the manager installation. | `https://example.net/service/doorpi` |
+| `MANAGER_API_KEY` | API-Key to send with the events. | `fat-ugly` |
+| `SLACK_WEBHOOK` | If set this webhook will be used to post a ring message to Slack | |
+| `SLACK_CHANNEL` | Slack channel to post to. The default channel will be used if unset. | |
 
 ### Manager
 
