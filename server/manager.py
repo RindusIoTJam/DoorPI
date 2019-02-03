@@ -1,4 +1,5 @@
 import json
+import os
 import time
 import BaseHTTPServer
 
@@ -44,48 +45,17 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write("Forbidden")
             else:
-                """ 
-                    Lets start the party...
-                    0. check request (ping/status/log/ring)
-                    1. Announce ring
-                    2. Wait with timeout for open command
-                    3. Send Command w/ DoorPw OR OK
-                """
                 self.handle_event()
 
-    def handle_ping(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write("OK")
-
-    def handle_status(self):
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write("OK")
-
-    def handle_log(self):
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write("OK")
-
-    def handle_ring(self):
-        time.sleep(5)
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        # Post to Slack and wait up to 60 seconds for response
-        self.end_headers()
-        self.wfile.write("OK")
-
     def handle_event(self):
+        """
+            Check what "command" is requested.
+
+            TODO: handle `last-seen` to show last ping for a given door.
+            TODO: handle `event-log` to show event-log (ring/open/ping) for a given door.
+        """
         if self.path == "/ping":
             self.handle_ping()
-        elif self.path == "/status":
-            self.handle_status()
-        elif self.path == "/log":
-            self.handle_log()
         elif self.path == "/ring":
             self.handle_ring()
         else:
@@ -93,6 +63,29 @@ class EventHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_header("Content-type", "text/plain")
             self.end_headers()
             self.wfile.write("Bad Request")
+
+    def handle_ping(self):
+        """
+            TODO: Record a last seen for that door
+        """
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write("OK")
+
+    def handle_ring(self):
+        """
+            1. Announce ring
+            2. Wait with timeout for open command
+            3. Send OK or timeout
+
+            TODO: Post to Slack and wait up to X seconds for response
+        """
+        time.sleep(5)
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write("OK")
 
     def log_message(self, format, *args):
         print "[%s]" % self.date_time_string(), \
@@ -115,6 +108,9 @@ def main():
     """
     global config
     config = load('manager.json')
+
+    if os.path.isfile('local_settings.json'):
+        config.update(load('local_settings.json'))
 
     server_class = BaseHTTPServer.HTTPServer
 
