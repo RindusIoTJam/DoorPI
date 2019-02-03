@@ -6,5 +6,7 @@
   "GPIO_RING":       "18",
   "GPIO_OPEN":       "23",
   "SLACK_WEBHOOK":   "blind/deaf/dumb",
-  "SLACK_CHANNEL":   "#doors"
+  "SLACK_CHANNEL":   "#doors",
+  "SLACK_OPENURL":   "http://doorpi.local:8080/open"
+
 }

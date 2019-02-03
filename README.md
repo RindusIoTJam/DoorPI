@@ -57,8 +57,6 @@ that is ignored by `.gitignore` to overwrite setup. E.g.
 }
 ```
 
-### Agent
-
 | JSON key        | Description |Default |
 | --------------- | ----------- | ------ |
 | `AGENT_HOST`    | Listen address of the agents web interface. Set to `0.0.0.0` to listen on all available addresses. | `127.0.0.1` |
@@ -69,6 +67,7 @@ that is ignored by `.gitignore` to overwrite setup. E.g.
 | `GPIO_OPEN`     | GPIO out-pin the the door-open relay connects. | `23` |
 | `SLACK_WEBHOOK` | If set this webhook will be used to post a ring message to Slack | |
 | `SLACK_CHANNEL` | Slack channel to post to. The default channel will be used if unset. | |
+| `SLACK_OPENURL` | BaseURL to call to open door. Normally http://`AGENT_HOST`:`AGENT_PORT`/open | |
 
 ## Development
 
