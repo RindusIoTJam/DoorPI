@@ -1,8 +1,10 @@
 {
   "AGENT_HOST": "127.0.0.1",
   "AGENT_PORT": "8080",
-  "DOOR_ID": "your-mother",
-  "DOOR_TO": "60",
-  "API_URL": "https://example.net/service/doorpi",
-  "API_KEY": "fat-ugly"
+  "DOOR_ID":    "your-mother",
+  "DOOR_TO":    "60",
+  "GPIO_RING":  "18",
+  "GPIO_OPEN":  "23",
+  "API_URL":    "https://example.net/service/doorpi",
+  "API_KEY":    "fat-ugly"
 }

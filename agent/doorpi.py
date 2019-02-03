@@ -11,7 +11,7 @@ from urlparse import parse_qs
 # TODO: Remove development hack
 emulation = False
 try:
-    from gpiozero import Button
+    from gpiozero import Button, DigitalOutputDevice
 except:
     emulation = True
 
@@ -21,6 +21,7 @@ except ImportError:
     print "ERROR: no ssl support"
 
 config = None
+door   = None
 
 
 def handle_ring(simulated=False):
@@ -59,6 +60,7 @@ def open_door(local=False):
         Will open the door.
     """
     global config
+    global door
 
     if local is True:
         print "%s - LOCAL OPEN" % date_time_string()
@@ -69,7 +71,10 @@ def open_door(local=False):
         config['LAST_OPEN'] = "%s (Remote)" % date_time_string()
 
     # TODO: Open the door by flipping a GPIO pin on the PI
-
+    if not emulation:
+        door.on()
+        time.sleep(1)
+        door.off()
 
 def load(filename):
     """
@@ -196,7 +201,8 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                          "</html>"
                          )
 
-    def log_message(self, format, *args):
+    def log_message(self, log_format, *args):
+        # overwritten to suppress any output
         return
 
 
@@ -206,6 +212,7 @@ def main():
     """
     global config
     global emulation
+    global door
 
     config = load('doorpi.json')
 
@@ -214,9 +221,10 @@ def main():
 
     heartbeat()
 
-    # TODO: Remove development hack
+    # TODO: Remove development hack (maybe)
     if not emulation:
-        ring = Button(2, hold_time=0.25)
+        door = DigitalOutputDevice(int(config['GPIO_OPEN']))
+        ring = Button(int(config['GPIO_RING']), hold_time=0.25)
         ring.when_pressed = handle_ring
 
     heartbeat_thread = HeartbeatThread()
