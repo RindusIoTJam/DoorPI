@@ -105,6 +105,8 @@ that is ignored by `.gitignore` to overwrite setup. E.g.
 | `AGENT_PORT` | The listen port of the agents web interface. | `8080` |
 | `DOOR_ID`    | An identifier of this door agent. | `your-mother` |
 | `DOOR_TO`    | Timeout to wait for an open response on a ring event. | `60` |
+| `GPIO_RING`  | GPIO in-pin where the ring is detected. | `18` |
+| `GPIO_OPEN`  | GPIO out-pin the the door-open relay connects. | `23` |
 | `API_URL`    | The URL of the manager installation. | `https://example.net/service/doorpi` |
 | `API_KEY`    | The API-Key to send with the events. | `fat-ugly` |
 
@@ -121,6 +123,6 @@ that is ignored by `.gitignore` to overwrite setup. E.g.
 
 ## Development
 
-If the requirement `RPi.GPIO` cant be fulfilled on the agent installation,
+If the requirement `RPi.GPIO` can't be fulfilled on the agent installation,
 the agent will switch into an emulation mode and add a `simulate ring` 
 button to the agents web user interface.
