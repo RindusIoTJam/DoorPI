@@ -42,7 +42,6 @@ def handle_ring(simulated=False):
         response = urllib2.urlopen(req, timeout=int(config['DOOR_TO']))
         print '%s - ring response code: %s' % (response.info().getheader('Date'), response.getcode())
 
-        # TODO: if response is OK then open
         if response.getcode() == 200:
             open_door()
 
@@ -64,12 +63,13 @@ def open_door(local=False):
     if local is True:
         print "%s - LOCAL OPEN" % date_time_string()
         config['LAST_OPEN'] = "%s (Local)" % date_time_string()
+        # TODO: Send event to manager to record that door was opened locally by agent wui.
     else:
         print "%s - REMOTE OPEN " % date_time_string()
         config['LAST_OPEN'] = "%s (Remote)" % date_time_string()
 
+    # TODO: Open the door by flipping a GPIO pin on the PI
 
-    # TODO: OPEN DOOR
 
 def load(filename):
     """
@@ -105,7 +105,9 @@ def heartbeat():
 
 
 def date_time_string(timestamp=None):
-    """Return the current date and time formatted for a message header."""
+    """
+        Return the current date and time formatted for a message header.
+    """
     weekdayname = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
     monthname = [None,
@@ -119,6 +121,7 @@ def date_time_string(timestamp=None):
         day, monthname[month], year,
         hh, mm, ss)
     return s
+
 
 class HeartbeatThread(threading.Thread):
     def __init__(self):
@@ -136,8 +139,6 @@ class HeartbeatThread(threading.Thread):
 
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    def __init__(self, request, client_address, server):
-        BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
     def do_HEAD(self):
         self.send_response(200)
@@ -216,7 +217,7 @@ def main():
     # TODO: Remove development hack
     if not emulation:
         ring = Button(2, hold_time=0.25)
-        ring.when_pressed = handle_ring()
+        ring.when_pressed = handle_ring
 
     heartbeat_thread = HeartbeatThread()
     heartbeat_thread.start()
@@ -232,6 +233,7 @@ def main():
 
     httpd.server_close()
     heartbeat_thread.stop()
+
 
 if __name__ == "__main__":
     main()

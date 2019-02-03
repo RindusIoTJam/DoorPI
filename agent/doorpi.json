@@ -1,8 +1,8 @@
 {
-  "AGENT_HOST": "0.0.0.0",
+  "AGENT_HOST": "127.0.0.1",
   "AGENT_PORT": "8080",
-  "DOOR_ID": "a-unique-identifier-of-a-doorpi-installation",
+  "DOOR_ID": "your-mother",
   "DOOR_TO": "60",
-  "API_URL": "https://dooropener.example.net/service/doorpi",
-  "API_KEY": "e12e0221-e016-4e4b-a3ea-3c12b51e375c"
+  "API_URL": "https://example.net/service/doorpi",
+  "API_KEY": "fat-ugly"
 }
