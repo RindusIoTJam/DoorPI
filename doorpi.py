@@ -10,7 +10,8 @@ import BaseHTTPServer
 from urlparse import parse_qs
 
 # TODO: Remove development hack
-emulation = False
+emulation = True
+
 try:
     from gpiozero import Button, DigitalOutputDevice
 except ImportError:
@@ -40,7 +41,7 @@ def handle_ring(simulated=False):
 
     r = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(32))
     config['DOORPI_RANDOM'] = r
-    post_to_slack('RING, click <%s/%s|here> to open.' % (config['SLACK_OPENURL'], r))
+    post_to_slack('@here RING, click <%s/%s|here> to open.' % (config['SLACK_OPENURL'], r))
 
 
 def post_to_slack(text):
