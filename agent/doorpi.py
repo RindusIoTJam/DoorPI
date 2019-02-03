@@ -23,16 +23,12 @@ except ImportError:
 config = None
 
 
-def simulate_ring():
-    handle_ring(True)
-
-
-def handle_ring(simulated=None):
+def handle_ring(simulated=False):
     """
         Connects to the API to signal a ring and waits for a timeout for further commands.
     """
     global config
-    if simulated is not None:
+    if simulated is True:
         config['LAST_RING'] = "%s (Simulated)" % date_time_string()
     else:
         config['LAST_RING'] = "%s" % date_time_string()
@@ -43,10 +39,12 @@ def handle_ring(simulated=None):
             'X-Api-Key': config['API_KEY']
         }
         req = urllib2.Request(config['API_URL']+"/ring", None, headers)
-        response = urllib2.urlopen(req, timeout=60)
+        response = urllib2.urlopen(req, timeout=int(config['DOOR_TO']))
         print '%s - ring response code: %s' % (response.info().getheader('Date'), response.getcode())
 
         # TODO: if response is OK then open
+        if response.getcode() == 200:
+            open_door()
 
     except IOError, e:
         if hasattr(e, 'code'):  # HTTPError
@@ -54,24 +52,22 @@ def handle_ring(simulated=None):
         elif hasattr(e, 'reason'):  # URLError
             print "can't connect, reason: ", e.reason
         else:
-            raise
+            pass
 
 
-def local_open_door():
-    open_door(True)
-
-def open_door(local=None):
+def open_door(local=False):
     """
         Will open the door.
     """
     global config
 
-    if local is not None:
+    if local is True:
         print "%s - LOCAL OPEN" % date_time_string()
+        config['LAST_OPEN'] = "%s (Local)" % date_time_string()
     else:
-        print "%s - REMOTE OPEN DENIED" % date_time_string()
+        print "%s - REMOTE OPEN " % date_time_string()
+        config['LAST_OPEN'] = "%s (Remote)" % date_time_string()
 
-    config['LAST_OPEN'] = "%s (Local)" % date_time_string()
 
     # TODO: OPEN DOOR
 
@@ -154,12 +150,12 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         try:
             if message['ring'] is not None:
                 print "%s - RING SIMULATION" % self.date_time_string()
-                simulate_ring()
+                handle_ring(True)
         except KeyError:
             pass
         try:
             if message['open'] is not None:
-                local_open_door()
+                open_door(True)
         except KeyError:
             pass
         self.do_GET()
@@ -213,7 +209,7 @@ def main():
     config = load('doorpi.json')
 
     if os.path.isfile('local_settings.json'):
-        config = load('local_settings.json')
+        config.update(load('local_settings.json'))
 
     heartbeat()
 
