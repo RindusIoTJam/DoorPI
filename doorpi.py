@@ -7,6 +7,7 @@ import time
 import urllib2
 import BaseHTTPServer
 
+from jinja2 import Template
 from urlparse import parse_qs
 
 # TODO: Remove development hack
@@ -39,7 +40,9 @@ def handle_ring(simulated=False):
 
     config['DOORPI_RING_TIMESTAMP'] = "%s" % calendar.timegm(time.gmtime())
 
-    r = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(32))
+    r = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
+        "%s" % calendar.timegm(time.gmtime())
+
     config['DOORPI_RANDOM'] = r
     post_to_slack('@here RING, click <%s/%s|here> to open.' % (config['SLACK_OPENURL'], r))
 
@@ -173,39 +176,12 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if self.path == '/favicon.ico':
             return
 
-        self.wfile.write('<html>\n'
-                         '<head>\n'
-                         '<title>%s</title>\n' % config['DOOR_NAME'] +
-                         '</head>\n'
-                         '<body>\n'
-                         '<h1>%s</h1>\n' % config['DOOR_NAME'] +
-                         '<table border="0">\n'
-                         '<tr><td>Current time: </td><td>%s</td></tr>\n' % self.date_time_string() +
-                         '<tr><td colspan="3"><hr /></td></tr>\n')
+        # TODO: Use Jinja2
+        with open('doorpi.html') as file_:
+            template = Template(file_.read())
 
-        try:
-            self.wfile.write('<tr><td>Last ring: </td><td>%s</td></tr>\n' % config['DOORPI_LAST_RING'])
-        except KeyError:
-            self.wfile.write('<tr><td>Last ring: </td><td>unknown</td></tr>\n')
+        self.wfile.write( template.render(config=config, now=self.date_time_string()))
 
-        try:
-            self.wfile.write('<tr><td>Last open: </td><td>%s</td></tr>\n' % config['DOORPI_LAST_OPEN'])
-        except KeyError:
-            self.wfile.write('<tr><td>Last open: </td><td>unknown</td></tr>\n')
-
-        self.wfile.write('<tr><td colspan="3"><hr /></td></tr>\n'
-                         '</table>\n'
-                         '<form action="/" method="post">\n'
-                         '<input type="submit" value="reload page" name="reload"/>\n')
-
-        # TODO: Remove development hack
-        if emulation:
-            self.wfile.write('<input type="submit" value="simulate ring" name="ring"/>\n')
-
-        self.wfile.write("<input type='submit' value='open door' name='open'/>\n"
-                         '</form>\n'
-                         '</body>\n'
-                         '</html>\n')
 
     def log_message(self, log_format, *args):
         # overwritten to suppress any output
