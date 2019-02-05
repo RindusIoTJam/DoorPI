@@ -44,7 +44,7 @@ def handle_ring(simulated=False):
         "%s" % calendar.timegm(time.gmtime())
 
     config['DOORPI_RANDOM'] = r
-    post_to_slack('@here RING, click <%s/%s|here> to open.' % (config['SLACK_OPENURL'], r))
+    post_to_slack('@here RING, click <%s/%s|HERE> to open.' % (config['SLACK_OPENURL'], r))
 
 
 def post_to_slack(text):
@@ -101,9 +101,10 @@ def open_door(slack=False):
             print "%s - LOCAL OPEN (WUI)" % date_time_string()
             config['DOORPI_LAST_OPEN'] = "%s (Local)" % date_time_string()
 
+        post_to_slack("Door opened ....")
+
         # TODO: Open the door by flipping a GPIO pin on the PI
         if not emulation:
-            post_to_slack("Door opened ....")
             door.on()
             time.sleep(1)
             door.off()
