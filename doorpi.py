@@ -24,8 +24,17 @@ except ImportError:
     print "ERROR: no ssl support"
 
 config = None
-door = None
 
+class Door:
+    
+    doorConfig = load('doorpi.json')
+
+    # class variable shared by all instances
+    gpioOpenPin = DigitalOutputDevice(int(doorConfig['GPIO_OPEN']))
+    # class constructor
+    def __init__(self, name, buttonNumber):
+        self.name = name
+        self.buttonNumber = buttonNumber
 
 def handle_ring(simulated=False):
     """
@@ -78,17 +87,15 @@ def post_to_slack(text):
             pass
 
 
-def slack_open_door(request):
-    open_door(True)
+def slack_open_door(aDoor, request):
+    open_door(aDoor, True)
     request.do_GET()
 
-
-def open_door(slack=False):
+def open_door(aDoor ,slack=False):
     """
         Will open the door.
     """
     global config
-    global door
 
     config['DOORPI_RANDOM'] = '_'
 
@@ -105,9 +112,9 @@ def open_door(slack=False):
 
         # TODO: Open the door by flipping a GPIO pin on the PI
         if not emulation:
-            door.on()
+            aDoor.on()
             time.sleep(1)
-            door.off()
+            aDoor.off()
     else:
         print "%s - OPEN TIMEOUT EXCEEDED" % date_time_string()
 
@@ -142,6 +149,8 @@ def date_time_string(timestamp=None):
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
+    aDoor = Door("RindusDoor", 12)
+
     def do_HEAD(self):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -158,7 +167,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             pass
         try:
             if message['open'] is not None:
-                open_door()
+                open_door(aDoor)
         except KeyError:
             pass
         self.do_GET()
@@ -167,7 +176,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         global config
 
         if self.path == '/open/%s' % config['DOORPI_RANDOM']:
-            slack_open_door(self)
+            slack_open_door(aDoor, self)
             return
 
         self.send_response(200)
@@ -195,8 +204,7 @@ def main():
     """
     global config
     global emulation
-    global door
-
+    
     config = load('doorpi.json')
     config['DOORPI_RANDOM'] = '_'
 
@@ -205,7 +213,6 @@ def main():
 
     # TODO: Remove development hack (maybe)
     if not emulation:
-        door = DigitalOutputDevice(int(config['GPIO_OPEN']))
         ring = Button(int(config['GPIO_RING']), hold_time=0.25)
         ring.when_pressed = handle_ring
 
