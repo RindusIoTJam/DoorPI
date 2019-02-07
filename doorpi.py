@@ -1,115 +1,284 @@
 import calendar
 import json
-import os
+import logging
+import os.path
 import random
 import string
+import tornado.escape
+import tornado.ioloop
+import tornado.options
+import tornado.template
+import tornado.web
+import tornado.websocket
+import threading
 import time
 import urllib2
-import BaseHTTPServer
 
-from jinja2 import Template
-from urlparse import parse_qs
-
-# TODO: Remove development hack
-emulation = True
+# TODO: Remove development hack (maybe)
+emulation = False
 
 try:
     from gpiozero import Button, DigitalOutputDevice
 except ImportError:
     emulation = True
 
-try:
-    import ssl
-except ImportError:
-    print "ERROR: no ssl support"
 
-config = None
-door = None
+class Application(tornado.web.Application):
+    _config = None
+
+    def __init__(self):
+        # TODO: Add (r"/slack[?timestamp={}]", SlackConnectionHandler)
+        handlers = [(r"/", MainHandler),
+                    (r"/slack", SlackHandler),
+                    (r"/door",  DoorSocketHandler)]
+        settings = dict(
+            cookie_secret=Application.config('webui.cookie.secret'),
+            template_path=os.path.join(os.path.dirname(__file__), "templates"),
+            static_path=os.path.join(os.path.dirname(__file__), "static"),
+            xsrf_cookies=True,
+        )
+        super(Application, self).__init__(handlers, **settings)
+        print "Application started. Emulation=%s" % emulation
+
+    @classmethod
+    def set_config(cls, config):
+        Application._config = Application.__config__(config)
+
+    @classmethod
+    def config(cls, key=None):
+        try:
+            return Application._config[key]
+        except KeyError:
+            return Application._config
+
+    @classmethod
+    def __config__(cls, _config):
+        """
+           Check essential config settings, use default if unset
+
+        :param _config:
+        """
+        defaults = (("webui.port", "8080"),
+                    ("webui.cookie.secret", "__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE__"),
+                    ("door.name", "Door"),
+                    ("door.open.timeout", "60"),
+                    ("gpio.ring", "18"),
+                    ("gpio.open", "23"))
+        for setting, default in defaults:
+            try:
+                _config[setting]
+            except KeyError:
+                _config[setting] = default
+
+        # Empty last ring and open, make persistent maybe later
+        _config['_door.last.ring'] = ''
+        _config['_door.last.open'] = ''
+
+        if os.path.isfile('local_settings.json'):
+            _config.update(load('local_settings.json'))
+
+        return _config
+
+    @classmethod
+    def validate_slack_config(cls, _config):
+        """
+           Check essential config settings for Slack
+
+        :param _config:
+        :return: True is setup is valid, False otherwise
+        """
+        try:
+            # TODO: check :: is a valid URL
+            h = _config["slack.webhook"]
+
+            # TODO: check :: channel has to start with #
+            c = _config["slack.channel"]
+
+            # TODO: check :: No trailing / on slack.baseurl
+            u = _config["slack.baseurl"]
+
+            # TODO: if valid once don't recheck. Make it a cls var
+            # TODO: classmethod here Application.has_valid_slack_config()
+
+            return True
+        except KeyError:
+            logging.warn("Slack deactivated because setup for Slack is incomplete or incorrect.")
+            return False
 
 
-def handle_ring(simulated=False):
-    """
-        Connects to the API to signal a ring and waits for a timeout for further commands.
-    """
-    global config
+class SlackHandler(tornado.web.RequestHandler):
+    loader = None
 
-    if simulated is True:
-        config['DOORPI_LAST_RING'] = "%s (Simulated)" % date_time_string()
-    else:
-        config['DOORPI_LAST_RING'] = "%s" % date_time_string()
+    def get(self):
+        self.render("index.html", config=Application.config(), emulation=emulation)
 
-    config['DOORPI_RING_TIMESTAMP'] = "%s" % calendar.timegm(time.gmtime())
+    @classmethod
+    def send(cls, text):
 
-    r = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
-        "%s" % calendar.timegm(time.gmtime())
+        # TODO: if Application.has_valid_slack_config()
 
-    config['DOORPI_RANDOM'] = r
-    post_to_slack('@here RING, click <%s/%s|HERE> to open.' % (config['SLACK_OPENURL'], r))
+        template_file = 'slack.json'
+        try:
+            message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
+                                                                       username=Application.config('door.name'),
+                                                                       text=text)
+        except AttributeError:
+            SlackHandler.loader = tornado.template.Loader(os.path.join(os.path.dirname(__file__), "templates"),
+                                                          autoescape=None)
+            message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
+                                                                       username=Application.config('door.name'),
+                                                                       text=text)
+        try:
+            req = urllib2.Request(Application.config('slack.webhook'),
+                                  data=message,
+                                  headers={'Content-Type': 'application/json'})
+            response = urllib2.urlopen(req, timeout=10)
+            logging.info("Slack responded: %s on message '%s'", response.getcode(), text)
+
+        except IOError, e:
+            if hasattr(e, 'code'):  # HTTPError
+                print 'http error code: ', e.code
+            elif hasattr(e, 'reason'):  # URLError
+                print "can't connect, reason: ", e.reason
+            else:
+                pass
 
 
-def post_to_slack(text):
-    """
-        Connects to the API to signal a ring and waits for a timeout for further commands.
-    """
-    global config
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render("index.html", config=Application.config(), emulation=emulation)
 
-    try:
-        payload = {
-            'text':       '%s' % text,
-            'channel':    '%s' % config['SLACK_CHANNEL'],
-            'username':   '%s' % config['DOOR_NAME'],
-            'icon_emoji': ':door:',
-            'link_names': 1,
-            "attachments": [
-            ]
-        }
-        req = urllib2.Request('https://hooks.slack.com/services/%s' % config['SLACK_WEBHOOK'],
-                              data=json.dumps(payload),
-                              headers={'Content-Type': 'application/json'})
-        response = urllib2.urlopen(req, timeout=10)
-        print '%s - slack response: %s' % (date_time_string(), response.getcode())
 
-    except IOError, e:
-        if hasattr(e, 'code'):  # HTTPError
-            print 'http error code: ', e.code
-        elif hasattr(e, 'reason'):  # URLError
-            print "can't connect, reason: ", e.reason
+class DoorSocketHandler(tornado.websocket.WebSocketHandler):
+    waiters = set()
+
+    door = None
+    ring = None
+
+    timeout_thread = None
+
+    def __init__(self, *args, **kwargs):
+        # TODO: Remove development hack (maybe)
+        global emulation
+        if not emulation:
+            DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
+            DoorSocketHandler.ring = Button(int(Application.config('gpio.ring')), hold_time=0.25)
+            DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring
+
+        super(DoorSocketHandler, self).__init__(*args, **kwargs)
+
+    def get_compression_options(self):
+        # Non-None enables compression with default options.
+        return {}
+
+    def open(self):
+        logging.info('Client IP: %s connected.' % self.request.remote_ip)
+        DoorSocketHandler.waiters.add(self)
+
+    def on_close(self):
+        logging.info('Client IP: %s disconnected.' % self.request.remote_ip)
+        DoorSocketHandler.waiters.remove(self)
+
+    def on_message(self, message):
+        logging.info("got message %s from %s", message, self.request.remote_ip)
+        payload = tornado.escape.json_decode(message)
+
+        payload.update({
+            "timestamp": "%s" % time.time()
+        })
+        DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
+
+        if payload['action'] == "ring":
+            self.handle_ring()
+
+        if payload['action'] == "open":
+            self.handle_open()
+
+    @classmethod
+    def handle_ring(cls):
+        """
+           Handle a ring event by enabling the _Open Door_ button for a given time
+        """
+        logging.info("handling RING")
+
+        if DoorSocketHandler.timeout_thread is None:
+            # Start a thread enabling open button for door.open.timeout seconds
+            DoorSocketHandler.timeout_thread = TimeoutThread(timeout=int(Application.config('door.open.timeout')))
+            DoorSocketHandler.timeout_thread.start()
         else:
+            # Extend the time if another ring occurs
+            DoorSocketHandler.timeout_thread.extend()
+
+        try:
+            r = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
+                "%s" % calendar.timegm(time.gmtime())
+
+            Application.config()['_door.open.random'] = r
+
+            SlackHandler.send('@here DING DONG :: open >>> <%s/slack?%s|HERE> <<<' % (Application.config('slack.baseurl'), r))
+        except KeyError:
             pass
 
+    @classmethod
+    def handle_open(cls):
+        """
+           Handle a open event by disabling the _Open Door_ button and flipping the GPIO open pin
+        """
+        logging.info("handling OPEN")
 
-def slack_open_door(request):
-    open_door(True)
-    request.do_GET()
-
-
-def open_door(slack=False):
-    """
-        Will open the door.
-    """
-    global config
-    global door
-
-    config['DOORPI_RANDOM'] = '_'
-
-    if (calendar.timegm(time.gmtime()) - int(config['DOORPI_RING_TIMESTAMP'])) <= int(config['OPEN_TIMEOUT']):
-
-        if slack is True:
-            print "%s - LOCAL OPEN (SLACK)" % date_time_string()
-            config['DOORPI_LAST_OPEN'] = "%s (Slack)" % date_time_string()
-        else:
-            print "%s - LOCAL OPEN (WUI)" % date_time_string()
-            config['DOORPI_LAST_OPEN'] = "%s (Local)" % date_time_string()
-
-        post_to_slack("Door opened ....")
-
-        # TODO: Open the door by flipping a GPIO pin on the PI
+        DoorSocketHandler.timeout_thread.stop()
         if not emulation:
-            door.on()
+            DoorSocketHandler.door.on()
+
+        try:
+            SlackHandler.send('@here DoorPI has opened the door.')
+        except KeyError:
+            pass
+
+        if not emulation:
+            time.sleep(0.5)
+            DoorSocketHandler.door.off()
+
+
+    @classmethod
+    def send_update(cls, message):
+        logging.info("sending message to %d waiters", len(cls.waiters))
+        for waiter in cls.waiters:
+            try:
+                waiter.write_message(message)
+            except:
+                logging.error("Error sending message", exc_info=True)
+
+
+class TimeoutThread (threading.Thread):
+    def __init__(self, timeout=60):
+        threading.Thread.__init__(self)
+        self.timeout = timeout
+        self.finish = int(time.time())+timeout
+        self.wait = True
+
+    def run(self):
+        """
+            Wait for timeout to occur and s
+        """
+        while self.wait and int(time.time()) < self.finish:
             time.sleep(1)
-            door.off()
-    else:
-        print "%s - OPEN TIMEOUT EXCEEDED" % date_time_string()
+            logging.info("remaining time to open: %s seconds" % (self.finish - int(time.time())))
+        if self.wait:
+            DoorSocketHandler.send_update({"action": "timeout"})
+
+    def extend(self):
+        """
+            Loads a JSON file and returns a config.
+        """
+        self.finish += self.timeout
+
+    def stop(self):
+        """
+            Loads a JSON file and returns a config.
+        """
+        self.wait = False
+
 
 def load(filename):
     """
@@ -140,85 +309,23 @@ def date_time_string(timestamp=None):
     return s
 
 
-class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-
-    def do_HEAD(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-
-    def do_POST(self):
-        content_len = int(self.headers.getheader('content-length', 0))
-        message = parse_qs(self.rfile.read(content_len))
-        try:
-            if message['ring'] is not None:
-                print "%s - RING SIMULATION" % self.date_time_string()
-                handle_ring(True)
-        except KeyError:
-            pass
-        try:
-            if message['open'] is not None:
-                open_door()
-        except KeyError:
-            pass
-        self.do_GET()
-
-    def do_GET(self):
-        global config
-
-        if self.path == '/open/%s' % config['DOORPI_RANDOM']:
-            slack_open_door(self)
-            return
-
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-
-        if self.path == '/favicon.ico':
-            return
-
-        # TODO: Use Jinja2
-        with open('doorpi.html') as file_:
-            template = Template(file_.read())
-
-        self.wfile.write( template.render(config=config, now=self.date_time_string()))
-
-
-    def log_message(self, log_format, *args):
-        # overwritten to suppress any output
-        return
-
-
 def main():
-    """
-        Does the basic setup and handles a ring.
-    """
-    global config
-    global emulation
-    global door
 
     config = load('doorpi.json')
-    config['DOORPI_RANDOM'] = '_'
 
-    if os.path.isfile('local_settings.json'):
-        config.update(load('local_settings.json'))
+    tornado.options.parse_command_line()
 
-    # TODO: Remove development hack (maybe)
-    if not emulation:
-        door = DigitalOutputDevice(int(config['GPIO_OPEN']))
-        ring = Button(int(config['GPIO_RING']), hold_time=0.25)
-        ring.when_pressed = handle_ring
+    Application.set_config(config)
+    app = Application()
 
-    server_class = BaseHTTPServer.HTTPServer
-
-    httpd = server_class((config['AGENT_HOST'], int(config['AGENT_PORT'])), RequestHandler)
+    app.listen(int(Application.config('webui.port')))
 
     try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
+        SlackHandler.send('@here DoorPI started at %s' % Application.config('slack.baseurl'))
+    except KeyError:
         pass
 
-    httpd.server_close()
+    tornado.ioloop.IOLoop.current().start()
 
 
 if __name__ == "__main__":

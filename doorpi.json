@@ -1,12 +1,10 @@
 {
-  "AGENT_HOST":      "127.0.0.1",
-  "AGENT_PORT":      "8080",
-  "DOOR_NAME":       "your-mother",
-  "OPEN_TIMEOUT":    "60",
-  "GPIO_RING":       "18",
-  "GPIO_OPEN":       "23",
-  "SLACK_WEBHOOK":   "blind/deaf/dumb",
-  "SLACK_CHANNEL":   "#doors",
-  "SLACK_OPENURL":   "http://doorpi.local:8080/open"
+  "webui.port":          "8080",
+  "webui.cookie.secret": "__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE__",
 
+  "door.name":           "Door",
+  "door.open.timeout":   "10",
+
+  "gpio.ring":           "18",
+  "gpio.open":           "23",
 }

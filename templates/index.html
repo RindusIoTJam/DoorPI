@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+  <title>{{ config['door.name'] }}</title>
+ </head>
+ <body class="container-fluid"{%
+       try %}{%
+         if config['sentry.dsn'] %} onload="Sentry.init({ dsn: '{{ config['sentry.dsn'] }}' });"{%
+         end %}{%
+       except %}{%
+       end %}>
+  <div class="row bg-light">
+   <div class="span6" style="float: none; margin: 0 auto;">
+    <h1 class="title">{{ config['door.name'] }}</h1>
+   </div>
+  </div>
+  <div class="row">
+   <div class="span6" style="float: none; margin: 0 auto;">
+    <table border="0" class="small" style="margin: 15 0 0 0;">
+     <tr>
+      <td>Current time: </td>
+      <td id="time"></td>
+     </tr>
+     <tr><td colspan="3"><hr /></td></tr>
+     <tr>
+      <td>Last ring: </td>
+      <td id="last_ring">{{ config['_door.last.ring'] }}</td>
+     </tr>
+     <tr>
+      <td>Last open: </td>
+      <td id="last_open">{{ config['_door.last.open'] }}</td>
+     </tr>
+     <tr><td colspan="3"><hr /></td></tr>
+    </table>
+   </div>
+  </div>
+  <div class="row bg-light">
+   <div class="span6" style="float: none; margin: 0 auto;">
+{% if emulation %}
+    <button type="button" id="ring" class="btn btn-secondary">Simulate ring</button>
+{% end %}
+    <button type="button" id="open" class="btn btn-warning" disabled>Open Door</button>
+   </div>
+  </div>
+  <div class="row bg-light">
+   <div class="span6 small" style="float: none; margin: 0 auto;">
+    <!--
+      TODO: slack://channel?id=<CHANNEL-ID>&team=<TEAM-ID>
+            lookup team id     https://api.slack.com/methods/team.info
+            lookup channel id: https://api.slack.com/methods/channels.list
+    -->
+    Slack channel: <a href="slack://channel?id=CFZA33VSB&team=T24CP5ZUZ">#rindus-iot-playground</a>
+   </div>
+  </div>
+  <div class="row bg-light">
+   <div class="span6 small" id="message" style="float: none; margin: 0 auto;">
+    <div id="alert" class="alert alert-danger collapse" role="alert"></div>
+   </div>
+  </div>
+{% try %}
+ {% if config['sentry.dsn'] %}
+  <script src="https://browser.sentry-cdn.com/4.5.3/bundle.min.js" crossorigin="anonymous"></script>
+ {% end %}
+{% except %}
+{% end %}
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+  <script src="{{ static_url('index.js') }}" type="text/javascript"></script>
+ </body>
+</html>
