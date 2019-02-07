@@ -6,5 +6,5 @@
   "door.open.timeout":   "10",
 
   "gpio.ring":           "18",
-  "gpio.open":           "23",
+  "gpio.open":           "23"
 }
