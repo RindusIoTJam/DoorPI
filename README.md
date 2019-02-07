@@ -1,5 +1,7 @@
 # DoorPI
 
+TODO: Update to new code
+
 ## Abstract
 
 Use a RaspberryPi Zero W to detect a ring at a remote door bell
