@@ -211,35 +211,31 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             # Extend the time if another ring occurs
             DoorSocketHandler.timeout_thread.extend()
 
-        try:
-            r = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
-                "%s" % calendar.timegm(time.gmtime())
+        r = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
+            "%s" % calendar.timegm(time.gmtime())
 
-            Application.config()['_door.open.random'] = r
+        Application.config()['_door.open.random'] = r
 
+        if Application.has_valid_slack_config(Application.config()):
             SlackHandler.send('@here DING DONG :: open >>> <%s/slack?%s|HERE> <<<' % (Application.config('slack.baseurl'), r))
-        except AttributeError:
-            pass
-        except KeyError:
-            pass
 
     @classmethod
     def handle_open(cls):
         """
            Handle a open event by disabling the _Open Door_ button and flipping the GPIO open pin
         """
+        if DoorSocketHandler.timeout_thread is None:
+            logging.info("ignoring OPEN without prior ring")
+            return
+
         logging.info("handling OPEN")
 
         DoorSocketHandler.timeout_thread.stop()
         if not emulation:
             DoorSocketHandler.door.on()
 
-        try:
+        if Application.has_valid_slack_config(Application.config()):
             SlackHandler.send('@here DoorPI has opened the door.')
-        except AttributeError:
-            pass
-        except KeyError:
-            pass
 
         if not emulation:
             time.sleep(0.5)
