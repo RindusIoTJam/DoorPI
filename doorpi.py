@@ -188,16 +188,30 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         payload.update({
             "timestamp": "%s" % time.time()
         })
-        DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
 
         if payload['action'] == "ring":
-            self.handle_ring()
+            secret = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
+                     "%s" % calendar.timegm(time.gmtime())
+
+            Application.config()['_door.open.secret'] = secret
+            payload.update({
+                "secret": "%s" % secret
+            })
+            DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
+            self.handle_ring(secret)
 
         if payload['action'] == "open":
-            self.handle_open()
+            try:
+                if payload['secret'] == Application.config().pop('_door.open.secret', None):
+                    DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
+                    self.handle_open()
+                else:
+                    logging.info("ignoring OPEN without correct ring secret")
+            except KeyError:
+                logging.info("ignoring OPEN without any secret given")
 
     @classmethod
-    def handle_ring(cls):
+    def handle_ring(cls, secret):
         """
            Handle a ring event by enabling the _Open Door_ button for a given time
         """
@@ -211,13 +225,8 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             # Extend the time if another ring occurs
             DoorSocketHandler.timeout_thread.extend()
 
-        r = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
-            "%s" % calendar.timegm(time.gmtime())
-
-        Application.config()['_door.open.random'] = r
-
         if Application.has_valid_slack_config(Application.config()):
-            SlackHandler.send('@here DING DONG :: open >>> <%s/slack?%s|HERE> <<<' % (Application.config('slack.baseurl'), r))
+            SlackHandler.send('@here DING DONG :: open >>> <%s/slack?%s|HERE> <<<' % (Application.config('slack.baseurl'), secret))
 
     @classmethod
     def handle_open(cls):
