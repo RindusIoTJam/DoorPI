@@ -13,6 +13,7 @@ import tornado.websocket
 import threading
 import time
 import urllib2
+import validators
 
 # TODO: Remove development hack (maybe)
 emulation = False
@@ -25,9 +26,9 @@ except ImportError:
 
 class Application(tornado.web.Application):
     _config = None
+    _slack  = None
 
     def __init__(self):
-        # TODO: Add (r"/slack[?timestamp={}]", SlackConnectionHandler)
         handlers = [(r"/", MainHandler),
                     (r"/slack", SlackHandler),
                     (r"/door",  DoorSocketHandler)]
@@ -80,31 +81,32 @@ class Application(tornado.web.Application):
         return _config
 
     @classmethod
-    def validate_slack_config(cls, _config):
+    def has_valid_slack_config(cls, _config):
         """
            Check essential config settings for Slack
 
         :param _config:
         :return: True is setup is valid, False otherwise
         """
-        try:
-            # TODO: check :: is a valid URL
-            h = _config["slack.webhook"]
+        if Application._slack is None:
+            Application._slack = False
+            try:
+                if not validators.url(_config["slack.webhook"]):
+                    logging.warn("slack.webhook doesn't validate as URL")
 
-            # TODO: check :: channel has to start with #
-            c = _config["slack.channel"]
+                if not validators.url(_config["slack.baseurl"]):
+                    logging.warn("slack.baseurl  doesn't validate as URL")
 
-            # TODO: check :: No trailing / on slack.baseurl
-            u = _config["slack.baseurl"]
+                if _config["slack.baseurl"][-1] == '/':
+                    _config["slack.baseurl"] = _config["slack.baseurl"][0:-1]
+                    logging.info("removed trailing '/' from slack.baseurl")
 
-            # TODO: if valid once don't recheck. Make it a cls var
-            # TODO: classmethod here Application.has_valid_slack_config()
+                Application._slack = True
+            except KeyError:
+                Application._slack = False
+                logging.warn("Slack deactivated because setup for Slack is incomplete or incorrect.")
 
-            return True
-        except KeyError:
-            logging.warn("Slack deactivated because setup for Slack is incomplete or incorrect.")
-            return False
-
+        return Application._slack
 
 class SlackHandler(tornado.web.RequestHandler):
     loader = None
@@ -115,33 +117,33 @@ class SlackHandler(tornado.web.RequestHandler):
     @classmethod
     def send(cls, text):
 
-        # TODO: if Application.has_valid_slack_config()
+        if Application.has_valid_slack_config(Application.config()):
 
-        template_file = 'slack.json'
-        try:
-            message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
-                                                                       username=Application.config('door.name'),
-                                                                       text=text)
-        except AttributeError:
-            SlackHandler.loader = tornado.template.Loader(os.path.join(os.path.dirname(__file__), "templates"),
-                                                          autoescape=None)
-            message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
-                                                                       username=Application.config('door.name'),
-                                                                       text=text)
-        try:
-            req = urllib2.Request(Application.config('slack.webhook'),
-                                  data=message,
-                                  headers={'Content-Type': 'application/json'})
-            response = urllib2.urlopen(req, timeout=10)
-            logging.info("Slack responded: %s on message '%s'", response.getcode(), text)
+            template_file = 'slack.json'
+            try:
+                message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
+                                                                           username=Application.config('door.name'),
+                                                                           text=text)
+            except AttributeError:
+                SlackHandler.loader = tornado.template.Loader(os.path.join(os.path.dirname(__file__), "templates"),
+                                                              autoescape=None)
+                message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
+                                                                           username=Application.config('door.name'),
+                                                                           text=text)
+            try:
+                req = urllib2.Request(Application.config('slack.webhook'),
+                                      data=message,
+                                      headers={'Content-Type': 'application/json'})
+                response = urllib2.urlopen(req, timeout=10)
+                logging.info("Slack responded: %s on message '%s'", response.getcode(), text)
 
-        except IOError, e:
-            if hasattr(e, 'code'):  # HTTPError
-                print 'http error code: ', e.code
-            elif hasattr(e, 'reason'):  # URLError
-                print "can't connect, reason: ", e.reason
-            else:
-                pass
+            except IOError, e:
+                if hasattr(e, 'code'):  # HTTPError
+                    print 'http error code: ', e.code
+                elif hasattr(e, 'reason'):  # URLError
+                    print "can't connect, reason: ", e.reason
+                else:
+                    pass
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -324,12 +326,8 @@ def main():
 
     app.listen(int(Application.config('webui.port')))
 
-    try:
+    if Application.has_valid_slack_config(Application.config()):
         SlackHandler.send('@here DoorPI started at %s' % Application.config('slack.baseurl'))
-    except AttributeError:
-        pass
-    except KeyError:
-        pass
 
     tornado.ioloop.IOLoop.current().start()
 
