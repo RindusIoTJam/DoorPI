@@ -37,7 +37,7 @@ $ pip install -r requirements.txt
 
 Now change the file `doorpi.json` to your needs and/or create a file
 `local_settings.json` that has at least a unique `door.name` setting. 
-See [Settings](../../dooropener-Rpi0-#Settings) for more options.
+See [Settings](../../../dooropener-Rpi0-#Settings) for more options.
 
 _The file `doorpi.json` MUST exist and contain valid JSON_
 
