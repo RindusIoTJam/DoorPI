@@ -228,6 +228,10 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         """
            Handle a open event by disabling the _Open Door_ button and flipping the GPIO open pin
         """
+        if DoorSocketHandler.timeout_thread is None:
+            logging.info("ignoring OPEN without prior ring")
+            return
+
         logging.info("handling OPEN")
 
         DoorSocketHandler.timeout_thread.stop()
