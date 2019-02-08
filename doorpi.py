@@ -216,6 +216,8 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             Application.config()['_door.open.random'] = r
 
             SlackHandler.send('@here DING DONG :: open >>> <%s/slack?%s|HERE> <<<' % (Application.config('slack.baseurl'), r))
+        except AttributeError:
+            pass
         except KeyError:
             pass
 
@@ -232,6 +234,8 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
 
         try:
             SlackHandler.send('@here DoorPI has opened the door.')
+        except AttributeError:
+            pass
         except KeyError:
             pass
 
@@ -322,6 +326,8 @@ def main():
 
     try:
         SlackHandler.send('@here DoorPI started at %s' % Application.config('slack.baseurl'))
+    except AttributeError:
+        pass
     except KeyError:
         pass
 
