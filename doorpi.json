@@ -1,10 +1,1 @@
-{
-  "webui.port":          "8080",
-  "webui.cookie.secret": "__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE__",
-
-  "door.name":           "Door",
-  "door.open.timeout":   "10",
-
-  "gpio.ring":           "18",
-  "gpio.open":           "23"
-}
+{}
