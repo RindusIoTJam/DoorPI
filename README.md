@@ -39,6 +39,8 @@ Now change the file `doorpi.json` to your needs and/or create a file
 `local_settings.json` that has at least a unique `door.name` setting. 
 See [Settings] for more options.
 
+_The file `doorpi.json` MUST exist and contain valid JSON_
+
 ```JSON
 {
   "door.name": "OfficeDoor"
