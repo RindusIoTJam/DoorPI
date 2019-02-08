@@ -5,5 +5,6 @@ gpiozero==1.4.1
 singledispatch==3.4.0.3
 six==1.12.0
 tornado==5.1.1
+validators==0.12.4
 wsgiref==0.1.2
 RPi.GPIO==0.6.5
