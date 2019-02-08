@@ -10,8 +10,11 @@ $(document).ready(function() {
     $('button').click(function(event) {
         if( event.target.id == "open" ) {
             $('#open').prop("disabled", true);
+            send({"action": event.target.id, "secret": updater.secret });
         }
-        send({"action": event.target.id });
+        else {
+            send({"action": event.target.id });
+        }
         return false;
     });
 
@@ -43,11 +46,13 @@ var updater = {
 
     start: function() {
         var url = "ws://" + location.host + "/door";
+        updater.secret = null
         updater.socket = new WebSocket(url);
         updater.socket.onmessage = function(event) {
             console.log(event.data);
             action=JSON.parse(event.data)['action'];
             if( action == "ring" ) {
+                updater.secret = JSON.parse(event.data)['secret'];
                 $('#open').removeAttr("disabled");
                 if ( audioReady = true ) {
                     audioElement.play().catch(function(error) {
