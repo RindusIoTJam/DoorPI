@@ -240,6 +240,8 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         logging.info("handling OPEN")
 
         DoorSocketHandler.timeout_thread.stop()
+        DoorSocketHandler.timeout_thread = None
+
         if not emulation:
             DoorSocketHandler.door.on()
 
