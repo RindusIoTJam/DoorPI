@@ -1,6 +1,9 @@
 argparse==1.2.1
+backports-abc==0.5
+futures==3.2.0
 gpiozero==1.4.1
+singledispatch==3.4.0.3
+six==1.12.0
+tornado==5.1.1
 wsgiref==0.1.2
-Jinja2==2.10
-MarkupSafe==1.1.0
 RPi.GPIO==0.6.5
