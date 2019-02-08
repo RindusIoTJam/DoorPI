@@ -1,26 +1,26 @@
 # DoorPI
 
-TODO: Update to new code
-
 ## Abstract
 
-Use a RaspberryPi Zero W to detect a ring at a remote door bell
-and open also the door remotely. 
+Use a RaspberryPi Zero W (rpi0w) to detect a ring at a remote door 
+bell and open also the door remotely. 
 
-##### Prerequisites
+## Prerequisites
 
-- RaspberryPi Zero W w/ Raspbian installed and remotely
-  accessable with the to-be-build DoorPI-HAT connected
-- Slack 'webhook access token' 
-- git / python / pip / virtualenv installed on agent and server
+- RaspberryPi Zero W w/ Raspbian installed, the to-be-build
+  DoorPI-HAT (TODO) installed and connected to some wifi.
+- git / python / pip / virtualenv installed on Raspbian.
 
-## Agent
+### Optional
 
-The agent sits near the bell with the door opening button and 
+- Slack 'webhook access token' for [Slack](https://slack.com) integration
+- Sentry DSN for [Sentry.io](https://sentry.io) integration
+
+## Agent Installation
+
+The agent sits near the bell with the physical door open button, 
 detects a ring, sends a message to slack and eventually handles
-a open-door event.
-
-### Installation
+a open-door event by flipping a relays.
 
 Connect to the rpi0w by ssh and change to a directory where
 you want the agent to reside, e.g. inside `/usr/local` with
@@ -35,44 +35,59 @@ $ source venv/bin/activate
 $ pip install -r requirements.txt
 ```
 
-Now create a file `local_settings.json` that has at least a unique
-`DOOR_NAME`. See _Local Settings_ for more options.
+Now change the file `doorpi.json` to your needs and/or create a file
+`local_settings.json` that has at least a unique `door.name` setting. 
+See [Settings] for more options.
 
 ```JSON
 {
-  "DOOR_NAME": "spain-malaga-cartama-elsexmo-ackermann-main",
+  "door.name": "OfficeDoor"
 }
 ```
 
-The agent can be started  by `python doorpi.py` and offers a very
-simple web interface at the configured `AGENT_HOST` and `AGENT_PORT`.
-By default his is `http://0.0.0.0:8080`.
+The agent can be started by executing `python doorpi.py` at the agent
+installation directory and offers a web interface at the configured 
+`webui.port`, by default [`http://0.0.0.0:8080`](http://0.0.0.0:8080)
+meaning on all IP addresses claimed by the rpi0w.
 
-## Local Settings
+## Settings
 
-In the agent and manager directory you can create a `local_settings.json`
-that is ignored by `.gitignore` to overwrite setup. E.g.
+At the agent installation directory you can create a `local_settings.json`
+that is ignored by `.gitignore` to overwrite setup from `doorpi.json`. 
+E.g.:
 
 ```JSON
 {
-  "DOOR_NAME": "spain-malaga-pta-habitec-rindus-main",
+  "door.name": "Test-Door",
+  "door.open.timeout": 10
 }
 ```
 
 | JSON key        | Description |Default |
 | --------------- | ----------- | ------ |
-| `AGENT_HOST`    | Listen address of the agents web interface. Set to `0.0.0.0` to listen on all available addresses. | `127.0.0.1` |
-| `AGENT_PORT`    | Listen port of the agents web interface. | `8080` |
-| `DOOR_NAME`     | An identifier of this door agent. | `your-mother` |
-| `OPEN_TIMEOUT`  | Timeout accept an open response on a ring event. | `60` |
-| `GPIO_RING`     | GPIO in-pin where the ring is detected. | `18` |
-| `GPIO_OPEN`     | GPIO out-pin the the door-open relay connects. | `23` |
-| `SLACK_WEBHOOK` | If set this webhook will be used to post a ring message to Slack | |
-| `SLACK_CHANNEL` | Slack channel to post to. The default channel will be used if unset. | |
-| `SLACK_OPENURL` | BaseURL to call to open door. Normally http://`AGENT_HOST`:`AGENT_PORT`/open | |
+| `webui.port`    | Listen port of the agents web interface. | `8080` |
+| `webui.cookie.secret` | | `__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE__` |
+| `door.name`     | An identifier of this door agent. | `Door` |
+| `door.open.timeout` | Timeout to accept an open response on a ring event. If another ring happens within timeout the remaining time extends with the same value. Value is given in seconds.| `60` |
+| `gpio.ring`     | GPIO in-pin where the ring is detected. | `18` |
+| `gpio.open`     | GPIO out-pin where the door-open relay connects. | `23` |
+| `slack.webhook` | If set this webhook will be used to post a ring message to Slack | |
+| `slack.channel` | Slack channel to post to. The default channel will be used if unset. | |
+| `slack.baseurl` | BaseURL of DoorPI. Usually `http://door.acme.com:[webui.port]` | |
+| `sentry.dsn` | For development purposes only. If it doesn't ring a bell, ignore this setting. ||
 
 ## Development
+
+### Simulation Mode
 
 If the requirement `RPi.GPIO` can't be fulfilled on the agent installation,
 the agent will switch into an emulation mode and add a `simulate ring` 
 button to the agents web user interface.
+
+### Templates
+
+To customize the look-and-feel of your DoorPI installation change the 
+files in the templates directory to your needs. The templates are 
+rendered by [tornado.template](http://www.tornadoweb.org/en/stable/template.html#),
+part of the [Tornado](http://www.tornadoweb.org/en/stable/index.html)
+Framework.
