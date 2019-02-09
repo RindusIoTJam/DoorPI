@@ -30,7 +30,7 @@ class Application(tornado.web.Application):
 
     def __init__(self):
         handlers = [(r"/", MainHandler),
-                    (r"/slack", SlackHandler),
+                    (r"/slack/(.*)", SlackHandler),
                     (r"/door",  DoorSocketHandler)]
         settings = dict(
             cookie_secret=Application.config('webui.cookie.secret'),
@@ -111,8 +111,26 @@ class Application(tornado.web.Application):
 class SlackHandler(tornado.web.RequestHandler):
     loader = None
 
-    def get(self):
-        self.render("index.html", config=Application.config(), emulation=emulation)
+    def get(self, secret=None):
+        """
+            Handles request to /slack/{secret}
+
+        :param secret: Everything in query_path behind /slack/
+        """
+        do_open = False
+        if secret == Application.config().pop('_door.open.secret', None):
+            payload = {
+                "action": "open",
+                "timestamp": "%s" % time.time()
+            }
+            DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
+            do_open = True
+        else:
+            logging.info("ignoring OPEN without correct ring secret")
+
+        self.render("slack.html", config=Application.config(), emulation=emulation, opened=do_open)
+        if do_open:
+            DoorSocketHandler.handle_open()
 
     @classmethod
     def send(cls, text):
@@ -147,6 +165,10 @@ class SlackHandler(tornado.web.RequestHandler):
 
 
 class MainHandler(tornado.web.RequestHandler):
+    """
+        Handles request to /
+    """
+
     def get(self):
         self.render("index.html", config=Application.config(), emulation=emulation)
 
@@ -203,6 +225,7 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         if payload['action'] == "open":
             try:
                 if payload['secret'] == Application.config().pop('_door.open.secret', None):
+                    payload.pop('secret', None)
                     DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
                     self.handle_open()
                 else:
@@ -226,7 +249,7 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             DoorSocketHandler.timeout_thread.extend()
 
         if Application.has_valid_slack_config(Application.config()):
-            SlackHandler.send('@here DING DONG :: open >>> <%s/slack?%s|HERE> <<<' % (Application.config('slack.baseurl'), secret))
+            SlackHandler.send('@here DING DONG :: open >>> <%s/slack/%s|HERE> <<<' % (Application.config('slack.baseurl'), secret))
 
     @classmethod
     def handle_open(cls):
@@ -242,6 +265,7 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         DoorSocketHandler.timeout_thread.stop()
         DoorSocketHandler.timeout_thread = None
 
+        # TODO: put the on-sleep-off into a thread to mitigate impact on website delivery
         if not emulation:
             DoorSocketHandler.door.on()
 
