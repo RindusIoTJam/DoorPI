@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+  <title>{{ config['door.name'] }}</title>
+ </head>
+ <body class="container-fluid"{%
+       try %}{%
+         if config['sentry.dsn'] %} onload="Sentry.init({ dsn: '{{ config['sentry.dsn'] }}' });"{%
+         end %}{%
+       except %}{%
+       end %}>
+  <div class="row bg-light">
+   <div class="span6" style="float: none; margin: 0 auto;">
+    <h1 class="title">{{ config['door.name'] }}</h1>
+   </div>
+  </div>
+  <div class="row bg-light">
+   <div class="span6 small" id="message" style="float: none; margin: 0 auto;">
+{% if opened %}
+    <div id="alert" class="alert alert-success" role="alert">😎 You opened did it! The door is opens. Thanks!</div>
+{% else %}
+    <div id="alert" class="alert alert-warning" role="alert">😞 Sorry, open-link had expired, but thanks anyway!</div>
+{% end %}
+   </div>
+  </div>
+{% try %}
+ {% if config['sentry.dsn'] %}
+  <script src="https://browser.sentry-cdn.com/4.5.3/bundle.min.js" crossorigin="anonymous"></script>
+ {% end %}
+{% except %}
+{% end %}
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+ </body>
+</html>
