@@ -133,7 +133,7 @@ class SlackHandler(tornado.web.RequestHandler):
             DoorSocketHandler.handle_open()
 
     @classmethod
-    def send(cls, text):
+    def send(cls, text, open_link=None):
 
         if Application.has_valid_slack_config(Application.config()):
 
@@ -141,13 +141,15 @@ class SlackHandler(tornado.web.RequestHandler):
             try:
                 message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
                                                                            username=Application.config('door.name'),
-                                                                           text=text)
+                                                                           text=text,
+                                                                           open_link=open_link)
             except AttributeError:
                 SlackHandler.loader = tornado.template.Loader(os.path.join(os.path.dirname(__file__), "templates"),
                                                               autoescape=None)
                 message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
                                                                            username=Application.config('door.name'),
-                                                                           text=text)
+                                                                           text=text,
+                                                                           open_link=open_link)
             try:
                 req = urllib2.Request(Application.config('slack.webhook'),
                                       data=message,
@@ -212,10 +214,15 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         })
 
         if payload['action'] == "ring":
-            secret = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
-                     "%s" % calendar.timegm(time.gmtime())
+            if DoorSocketHandler.timeout_thread is None:
+                # 1st ring: create secret
+                secret = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
+                         "%s" % calendar.timegm(time.gmtime())
+                Application.config()['_door.open.secret'] = secret
+            else:
+                # Follow-up ring: reuse existing secret
+                secret = Application.config()['_door.open.secret']
 
-            Application.config()['_door.open.secret'] = secret
             payload.update({
                 "secret": "%s" % secret
             })
@@ -249,7 +256,8 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             DoorSocketHandler.timeout_thread.extend()
 
         if Application.has_valid_slack_config(Application.config()):
-            SlackHandler.send('@here DING DONG :: open >>> <%s/slack/%s|HERE> <<<' % (Application.config('slack.baseurl'), secret))
+            open_link = "%s/slack/%s" % (Application.config('slack.baseurl'), secret)
+            SlackHandler.send('@here DING DONG ... RING RING ... KNOCK KNOCK', open_link)
 
     @classmethod
     def handle_open(cls):
@@ -358,7 +366,7 @@ def main():
     app.listen(int(Application.config('webui.port')))
 
     if Application.has_valid_slack_config(Application.config()):
-        SlackHandler.send('@here DoorPI started at %s' % Application.config('slack.baseurl'))
+        SlackHandler.send('DoorPI started at %s' % Application.config('slack.baseurl'))
 
     tornado.ioloop.IOLoop.current().start()
 
