@@ -5,24 +5,24 @@
   "link_names": 1,
   "attachments": [
 {% if open_link is None %}
-        {
-            "title": "{{ text }}",
-            "color": "#36a64f",
-            "fallback": "{{ text }}"
-        }
+    {
+      "title": "{{ text }}",
+      "color": "#36a64f",
+      "fallback": "{{ text }}"
+    }
 {% else %}
+    {
+      "footer": "{{ text }}",
+      "color": "#3aa3e3",
+      "fallback": "{{ open_link }}",
+      "actions": [
         {
-            "pretext": "{{ text }}",
-            "color": "#3AA3E3",
-            "fallback": "{{ open_link }}",
-            "actions": [
-                {
-                    "type": "button",
-                    "text": "----> Open Door <----",
-                    "url": "{{ open_link }}"
-                }
-            ]
+          "type": "button",
+          "text": "----> Open Door <----",
+          "url": "{{ open_link }}"
         }
+      ]
+    }
 {% end %}
   ]
 }
