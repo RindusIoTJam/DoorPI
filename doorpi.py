@@ -176,8 +176,9 @@ class MainHandler(tornado.web.RequestHandler):
 
 
 class DoorSocketHandler(tornado.websocket.WebSocketHandler):
+    
     waiters = set()
-
+    
     door = None
     ring = None
 
@@ -187,7 +188,11 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         # TODO: Remove development hack (maybe)
         global emulation
         if not emulation:
-            DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
+            DoorSocketHandler.door = Door(
+                                        Application.config('door.name'),
+                                        int(Application.config('gpio.open'))
+                                        )
+
             DoorSocketHandler.ring = Button(int(Application.config('gpio.ring')), hold_time=0.25)
             DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring
 
@@ -275,14 +280,14 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
 
         # TODO: put the on-sleep-off into a thread to mitigate impact on website delivery
         if not emulation:
-            DoorSocketHandler.door.on()
+            DoorSocketHandler.door.open()
 
         if Application.has_valid_slack_config(Application.config()):
             SlackHandler.send('@here DoorPI has opened the door.')
 
         if not emulation:
             time.sleep(0.5)
-            DoorSocketHandler.door.off()
+            DoorSocketHandler.door.close()
 
 
     @classmethod
@@ -294,6 +299,19 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             except:
                 logging.error("Error sending message", exc_info=True)
 
+class Door:
+
+    # class constructor
+    def __init__(self, name, openPin):
+        self.name = name
+        self.digitalOutputDevice = DigitalOutputDevice(openPin)
+    
+    def open(self):
+        self.digitalOutputDevice.on()
+    
+    def close(self):
+        self.digitalOutputDevice.off()
+    
 
 class TimeoutThread (threading.Thread):
     def __init__(self, timeout=60):
@@ -352,7 +370,6 @@ def date_time_string(timestamp=None):
         day, monthname[month], year,
         hh, mm, ss)
     return s
-
 
 def main():
 
