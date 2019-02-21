@@ -15,18 +15,12 @@ import time
 import urllib2
 import validators
 
-# TODO: Remove development hack (maybe)
-emulation = False
-
-try:
-    from gpiozero import Button, DigitalOutputDevice
-except ImportError:
-    emulation = True
+from gpiozero import Button, DigitalOutputDevice
 
 
 class Application(tornado.web.Application):
     _config = None
-    _slack  = None
+    _slack = None
 
     def __init__(self):
         handlers = [(r"/", MainHandler),
@@ -39,7 +33,6 @@ class Application(tornado.web.Application):
             xsrf_cookies=True,
         )
         super(Application, self).__init__(handlers, **settings)
-        print "Application started. Emulation=%s" % emulation
 
     @classmethod
     def set_config(cls, config):
@@ -108,6 +101,7 @@ class Application(tornado.web.Application):
 
         return Application._slack
 
+
 class SlackHandler(tornado.web.RequestHandler):
     loader = None
 
@@ -128,7 +122,7 @@ class SlackHandler(tornado.web.RequestHandler):
         else:
             logging.info("ignoring OPEN without correct ring secret")
 
-        self.render("slack.html", config=Application.config(), emulation=emulation, opened=do_open)
+        self.render("slack.html", config=Application.config(), opened=do_open)
         if do_open:
             DoorSocketHandler.handle_open()
 
@@ -159,9 +153,9 @@ class SlackHandler(tornado.web.RequestHandler):
 
             except IOError, e:
                 if hasattr(e, 'code'):  # HTTPError
-                    print 'http error code: ', e.code
+                    logging.info("HTTP Error Code: %s" % e.code)
                 elif hasattr(e, 'reason'):  # URLError
-                    print "can't connect, reason: ", e.reason
+                    logging.info("can't connect, reason: %s" % e.reason)
                 else:
                     pass
 
@@ -172,27 +166,23 @@ class MainHandler(tornado.web.RequestHandler):
     """
 
     def get(self):
-        self.render("index.html", config=Application.config(), emulation=emulation)
+        self.render("index.html", config=Application.config())
 
 
 class DoorSocketHandler(tornado.websocket.WebSocketHandler):
-    
     waiters = set()
-    
+
     door = None
     ring = None
 
     timeout_thread = None
 
     def __init__(self, *args, **kwargs):
-        # TODO: Remove development hack (maybe)
-        global emulation
-        if not emulation:
-            DoorSocketHandler.door = Door(
-                                        Application.config('door.name'),
-                                        int(Application.config('gpio.open'))
-                                        )
 
+        if DoorSocketHandler.door is None:
+            DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
+
+        if DoorSocketHandler.ring is None:
             DoorSocketHandler.ring = Button(int(Application.config('gpio.ring')), hold_time=0.25)
             DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring
 
@@ -218,22 +208,6 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             "timestamp": "%s" % time.time()
         })
 
-        if payload['action'] == "ring":
-            if DoorSocketHandler.timeout_thread is None:
-                # 1st ring: create secret
-                secret = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
-                         "%s" % calendar.timegm(time.gmtime())
-                Application.config()['_door.open.secret'] = secret
-            else:
-                # Follow-up ring: reuse existing secret
-                secret = Application.config()['_door.open.secret']
-
-            payload.update({
-                "secret": "%s" % secret
-            })
-            DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
-            self.handle_ring(secret)
-
         if payload['action'] == "open":
             try:
                 if payload['secret'] == Application.config().pop('_door.open.secret', None):
@@ -246,23 +220,42 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
                 logging.info("ignoring OPEN without any secret given")
 
     @classmethod
-    def handle_ring(cls, secret):
+    def handle_ring(cls):
         """
            Handle a ring event by enabling the _Open Door_ button for a given time
         """
         logging.info("handling RING")
 
         if DoorSocketHandler.timeout_thread is None:
+            # 1st ring: create secret
+            secret = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
+                     "%s" % calendar.timegm(time.gmtime())
+            Application.config()['_door.open.secret'] = secret
+
             # Start a thread enabling open button for door.open.timeout seconds
             DoorSocketHandler.timeout_thread = TimeoutThread(timeout=int(Application.config('door.open.timeout')))
             DoorSocketHandler.timeout_thread.start()
         else:
-            # Extend the time if another ring occurs
-            DoorSocketHandler.timeout_thread.extend()
+            # Follow-up ring: reuse existing secret
+            try:
+                secret = Application.config()['_door.open.secret']
 
-        if Application.has_valid_slack_config(Application.config()):
-            open_link = "%s/slack/%s" % (Application.config('slack.baseurl'), secret)
-            SlackHandler.send('@here DING DONG ... RING RING ... KNOCK KNOCK', open_link)
+                # Extend the time if another ring occurs
+                DoorSocketHandler.timeout_thread.extend()
+
+                payload = {
+                    "action": "ring",
+                    "secret": "%s" % secret,
+                    "timestamp": "%s" % time.time()
+                }
+                DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
+
+                if Application.has_valid_slack_config(Application.config()):
+                    open_link = "%s/slack/%s" % (Application.config('slack.baseurl'), secret)
+                    SlackHandler.send('@here DING DONG ... RING RING ... KNOCK KNOCK', open_link)
+
+            except KeyError:
+                pass
 
     @classmethod
     def handle_open(cls):
@@ -279,15 +272,14 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         DoorSocketHandler.timeout_thread = None
 
         # TODO: put the on-sleep-off into a thread to mitigate impact on website delivery
-        if not emulation:
-            DoorSocketHandler.door.open()
+
+        DoorSocketHandler.door.on()
 
         if Application.has_valid_slack_config(Application.config()):
             SlackHandler.send('@here DoorPI has opened the door.')
 
-        if not emulation:
-            time.sleep(0.5)
-            DoorSocketHandler.door.close()
+        time.sleep(0.5)
+        DoorSocketHandler.door.off()
 
 
     @classmethod
@@ -299,19 +291,6 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             except:
                 logging.error("Error sending message", exc_info=True)
 
-class Door:
-
-    # class constructor
-    def __init__(self, name, openPin):
-        self.name = name
-        self.digitalOutputDevice = DigitalOutputDevice(openPin)
-    
-    def open(self):
-        self.digitalOutputDevice.on()
-    
-    def close(self):
-        self.digitalOutputDevice.off()
-    
 
 class TimeoutThread (threading.Thread):
     def __init__(self, timeout=60):
@@ -371,6 +350,7 @@ def date_time_string(timestamp=None):
         hh, mm, ss)
     return s
 
+
 def main():
 
     config = load('doorpi.json')
@@ -385,7 +365,10 @@ def main():
     if Application.has_valid_slack_config(Application.config()):
         SlackHandler.send('DoorPI started at %s' % Application.config('slack.baseurl'))
 
-    tornado.ioloop.IOLoop.current().start()
+    try:
+        tornado.ioloop.IOLoop.current().start()
+    except KeyboardInterrupt:
+        SlackHandler.send('DoorPI stopped.')
 
 
 if __name__ == "__main__":
