@@ -15,7 +15,7 @@ import time
 import urllib2
 import validators
 
-#from gpiozero import Button, DigitalOutputDevice
+from gpiozero import Button, DigitalOutputDevice
 
 
 class Application(tornado.web.Application):
@@ -179,12 +179,12 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
 
     def __init__(self, *args, **kwargs):
 
-        """if DoorSocketHandler.door is None:
+        if DoorSocketHandler.door is None:
             DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
 
         if DoorSocketHandler.ring is None:
             DoorSocketHandler.ring = Button(int(Application.config('gpio.ring')), hold_time=0.25)
-            DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring"""
+            DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring
 
         super(DoorSocketHandler, self).__init__(*args, **kwargs)
 
@@ -287,13 +287,13 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         # TODO: put the on-sleep-off into a thread to mitigate impact on website delivery
 
         Application.config()['_door.last.open'] = "%s" % time.time()
-        """DoorSocketHandler.door.on()
+        DoorSocketHandler.door.on()
 
         if Application.has_valid_slack_config(Application.config()):
             SlackHandler.send('@here DoorPI has opened the door.')
 
         time.sleep(0.5)
-        DoorSocketHandler.door.off()"""
+        DoorSocketHandler.door.off()
 
 
     @classmethod
