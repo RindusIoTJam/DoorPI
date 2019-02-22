@@ -66,6 +66,14 @@ var updater = {
                 $('#open').prop("disabled", true);
                 $('#last_open').html(prettydate(JSON.parse(event.data)['timestamp']));
             }
+            if( action == "update" ) {
+                if ( JSON.parse(event.data)['last_open'].length > 0 ) {
+                    $('#last_open').html(prettydate(JSON.parse(event.data)['last_open']));
+                }
+                if ( JSON.parse(event.data)['last_ring'].length > 0 ) {
+                    $('#last_ring').html(prettydate(JSON.parse(event.data)['last_ring']));
+                }
+            }
             if( action == 'timeout' ) {
                 $('#open').prop("disabled", true);
             }

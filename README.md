@@ -71,8 +71,8 @@ E.g.:
 | `webui.cookie.secret` | | `__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE__` |
 | `door.name`     | An identifier of this door agent. | `Door` |
 | `door.open.timeout` | Timeout to accept an open response on a ring event. If another ring happens within timeout the remaining time extends with the same value. Value is given in seconds.| `60` |
-| `gpio.ring`     | GPIO in-pin where the ring is detected. | `18` |
 | `gpio.open`     | GPIO out-pin where the door-open relay connects. | `23` |
+| `gpio.ring`     | GPIO in-pin where the ring is detected. | `24` |
 | `slack.webhook` | If set this webhook will be used to post a ring message to Slack | |
 | `slack.channel` | Slack channel to post to. The default channel will be used if unset. | |
 | `slack.baseurl` | BaseURL of DoorPI. Usually `http://door.acme.com:[webui.port]` | |
