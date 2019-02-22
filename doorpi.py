@@ -15,7 +15,7 @@ import time
 import urllib2
 import validators
 
-from gpiozero import Button, DigitalOutputDevice
+#from gpiozero import Button, DigitalOutputDevice
 
 
 class Application(tornado.web.Application):
@@ -179,12 +179,12 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
 
     def __init__(self, *args, **kwargs):
 
-        if DoorSocketHandler.door is None:
+        """if DoorSocketHandler.door is None:
             DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
 
         if DoorSocketHandler.ring is None:
             DoorSocketHandler.ring = Button(int(Application.config('gpio.ring')), hold_time=0.25)
-            DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring
+            DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring"""
 
         super(DoorSocketHandler, self).__init__(*args, **kwargs)
 
@@ -195,6 +195,15 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         logging.info('Client IP: %s connected.' % self.request.remote_ip)
         DoorSocketHandler.waiters.add(self)
+
+        message = {
+            "action": "update",
+            "last_open": "%s" % Application.config()['_door.last.open'],
+            "last_ring": "%s" % Application.config()['_door.last.ring'],
+            "timestamp": "%s" % time.time()
+        }
+
+        self.write_message(message)
 
     def on_close(self):
         logging.info('Client IP: %s disconnected.' % self.request.remote_ip)
@@ -226,6 +235,10 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         """
         logging.info("handling RING")
 
+        timestamp = time.time()
+
+        Application.config()['_door.last.ring'] = "%s" % timestamp
+
         if DoorSocketHandler.timeout_thread is None:
             # 1st ring: create secret
             secret = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(2)) + \
@@ -236,26 +249,26 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             DoorSocketHandler.timeout_thread = TimeoutThread(timeout=int(Application.config('door.open.timeout')))
             DoorSocketHandler.timeout_thread.start()
         else:
-            # Follow-up ring: reuse existing secret
-            try:
-                secret = Application.config()['_door.open.secret']
+            while True:
+                # Follow-up ring: reuse existing secret
+                if '_door.open.secret' in Application.config():
+                    secret = Application.config()['_door.open.secret']
+                    break
 
-                # Extend the time if another ring occurs
-                DoorSocketHandler.timeout_thread.extend()
+            # Extend the time if another ring occurs
+            DoorSocketHandler.timeout_thread.extend()
 
-                payload = {
-                    "action": "ring",
-                    "secret": "%s" % secret,
-                    "timestamp": "%s" % time.time()
-                }
-                DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
+        payload = {
+            "action": "ring",
+            "secret": "%s" % secret,
+            "timestamp": "%s" % timestamp
+        }
+        DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
 
-                if Application.has_valid_slack_config(Application.config()):
-                    open_link = "%s/slack/%s" % (Application.config('slack.baseurl'), secret)
-                    SlackHandler.send('@here DING DONG ... RING RING ... KNOCK KNOCK', open_link)
+        if Application.has_valid_slack_config(Application.config()):
+            open_link = "%s/slack/%s" % (Application.config('slack.baseurl'), secret)
+            SlackHandler.send('@here DING DONG ... RING RING ... KNOCK KNOCK', open_link)
 
-            except KeyError:
-                pass
 
     @classmethod
     def handle_open(cls):
@@ -273,13 +286,14 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
 
         # TODO: put the on-sleep-off into a thread to mitigate impact on website delivery
 
-        DoorSocketHandler.door.on()
+        Application.config()['_door.last.open'] = "%s" % time.time()
+        """DoorSocketHandler.door.on()
 
         if Application.has_valid_slack_config(Application.config()):
             SlackHandler.send('@here DoorPI has opened the door.')
 
         time.sleep(0.5)
-        DoorSocketHandler.door.off()
+        DoorSocketHandler.door.off()"""
 
 
     @classmethod
