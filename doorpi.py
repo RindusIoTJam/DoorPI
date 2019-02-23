@@ -130,6 +130,9 @@ class ApiHandler(tornado.web.RequestHandler):
             DoorSocketHandler.handle_open()
             response = {'open': "%s" % time.time()}
             tornado.log.access_log.warn("200 GET /api/%s (%s)", apikey, self.request.remote_ip)
+            DoorSocketHandler.door.on()
+            time.sleep(0.5)
+            DoorSocketHandler.door.off()
         else:
             response = {'error': "Unauthorized"}
             self.set_status(401)
