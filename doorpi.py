@@ -6,6 +6,7 @@ import random
 import string
 import tornado.escape
 import tornado.ioloop
+import tornado.log
 import tornado.options
 import tornado.template
 import tornado.web
@@ -20,12 +21,14 @@ from gpiozero import Button, DigitalOutputDevice
 
 class Application(tornado.web.Application):
     _config = None
+    _apikeys = None
     _slack = None
 
     def __init__(self):
         handlers = [(r"/", MainHandler),
-                    (r"/slack/(.*)", SlackHandler),
-                    (r"/door",  DoorSocketHandler)]
+                    (r"/api/open/(.*)", ApiHandler),
+                    (r"/door",  DoorSocketHandler),
+                    (r"/slack/(.*)", SlackHandler)]
         settings = dict(
             cookie_secret=Application.config('webui.cookie.secret'),
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
@@ -37,6 +40,17 @@ class Application(tornado.web.Application):
     @classmethod
     def set_config(cls, config):
         Application._config = Application.__config__(config)
+
+    @classmethod
+    def set_apikeys(cls, apikeys):
+        Application._apikeys = apikeys
+
+    @classmethod
+    def valid_apikey(cls, apikey=None):
+        if apikey in Application._apikeys:
+            return True
+        return False
+
 
     @classmethod
     def config(cls, key=None):
@@ -102,12 +116,38 @@ class Application(tornado.web.Application):
         return Application._slack
 
 
+class ApiHandler(tornado.web.RequestHandler):
+    loader = None
+
+    def get(self, apikey=None):
+        """
+            Handles get requests to /api/{apikey}
+
+        :param apikey: Everything in query_path behind /api/
+        """
+
+        if Application.valid_apikey(apikey):
+            DoorSocketHandler.handle_open()
+            response = {'open': "%s" % time.time()}
+            tornado.log.access_log.warn("200 GET /api/%s (%s)", apikey, self.request.remote_ip)
+            DoorSocketHandler.door.on()
+            time.sleep(0.5)
+            DoorSocketHandler.door.off()
+        else:
+            response = {'error': "Unauthorized"}
+            self.set_status(401)
+
+        self.set_header('Content-Type', 'text/json')
+        self.write(response)
+        self.finish()
+
+
 class SlackHandler(tornado.web.RequestHandler):
     loader = None
 
     def get(self, secret=None):
         """
-            Handles request to /slack/{secret}
+            Handles get request to /slack/{secret}
 
         :param secret: Everything in query_path behind /slack/
         """
@@ -178,7 +218,6 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
     timeout_thread = None
 
     def __init__(self, *args, **kwargs):
-
         if DoorSocketHandler.door is None:
             DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
 
@@ -269,7 +308,6 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             open_link = "%s/slack/%s" % (Application.config('slack.baseurl'), secret)
             SlackHandler.send('@here DING DONG ... RING RING ... KNOCK KNOCK', open_link)
 
-
     @classmethod
     def handle_open(cls):
         """
@@ -293,8 +331,8 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             SlackHandler.send('@here DoorPI has opened the door.')
 
         time.sleep(0.5)
-        DoorSocketHandler.door.off()
 
+        DoorSocketHandler.door.off()
 
     @classmethod
     def send_update(cls, message):
@@ -338,12 +376,17 @@ class TimeoutThread (threading.Thread):
 
 def load(filename):
     """
-        Loads a JSON file and returns a config.
+        Loads a JSON file and returns a dict.
     """
-    with open(filename, 'r') as settings_file:
-        _config = json.load(settings_file)
+    _dict={}
 
-    return _config
+    try:
+        with open(filename, 'r') as settings_file:
+            _dict = json.load(settings_file)
+    except IOError:
+        pass
+
+    return _dict
 
 
 def date_time_string(timestamp=None):
@@ -366,12 +409,12 @@ def date_time_string(timestamp=None):
 
 
 def main():
-
     config = load('doorpi.json')
-
-    tornado.options.parse_command_line()
-
     Application.set_config(config)
+
+    apikeys = load('apikeys.json')
+    Application.set_apikeys(apikeys)
+
     app = Application()
 
     app.listen(int(Application.config('webui.port')))

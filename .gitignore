@@ -108,6 +108,7 @@ venv.bak/
 
 # local settings
 local_settings.json
+apikeys.json
 
 # Chrome extension - Rest Web Service Client to develop and test RESTful web service APIs
 # https://chrome.google.com/webstore/detail/rest-web-service-client/ecjfcmddigpdlehfhdnnnhfgihkmejin
