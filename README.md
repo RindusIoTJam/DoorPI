@@ -52,6 +52,36 @@ installation directory and offers a web interface at the configured
 `webui.port`, by default [`http://0.0.0.0:8080`](http://0.0.0.0:8080)
 meaning on all IP addresses claimed by the rpi0w.
 
+### systemd service definition
+
+Create a file `/etc/systemd/system/doorpi-agent.service` with content
+
+```Properties
+[Unit]
+Description=DoorPi-Agent
+After=multi-user.target
+
+[Service]
+Type=idle
+WorkingDirectory=/usr/local/doorpi-agent
+ExecStart=/usr/local/doorpi-agent/venv/bin/python doorpi.py
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Change `WorkingDirectory` and `ExecStart` to your installation directory
+and after save run
+
+```Bash
+chmod 664 /etc/systemd/system/doorpi-agent.service
+systemctl daemon-reload
+systemctl enable doorpi-agent.service
+systemctl start doorpi-agent.service
+```
+
+to enable start-on-boot and to also start the service now.
+
 ## Settings
 
 At the agent installation directory you can create a `local_settings.json`
@@ -77,6 +107,35 @@ E.g.:
 | `slack.channel` | Slack channel to post to. The default channel will be used if unset. | |
 | `slack.baseurl` | BaseURL of DoorPI. Usually `http://door.acme.com:[webui.port]` | |
 | `sentry.dsn` | For development purposes only. If it doesn't ring a bell, ignore this setting. ||
+
+### Open API
+
+By GET requesting in the form of `/api(open/{apikey}` the door can be opened 
+without an upfront ring to e.g. use a mobile application like Android
+[HTTP Request Widget](https://play.google.com/store/apps/details?id=com.idlegandalf.httprequestwidget&hl=en)
+or [IFTTT](https://ifttt.com/) to open the door.
+
+The api-keys have to be saved in a file named `apikeys.json` at the DoorPI
+installation directory.
+
+Example:
+```JSON
+{
+  "f23c7114-f6b7-4269-a5a0-a58dcd671952": "Description",
+  "0492af52-b10e-4be8-b378-f4986c10c1fa": "Description",
+  "25389c07-5902-4da5-a397-0c51b43f2846": "Description",
+  "88e8fb43-c762-4aa6-a72c-d5a0ed333f66": "Description",
+  "2a1298fc-a236-4662-a70c-c926b1054b55": "Description"
+}
+```
+
+When a valid api-key is given a JSON result `{"open": "{timestamp}"}` will be returned,
+on invalid api-key `{'error': "Unauthorized"}` with HTTP status code 401.
+
+```Bash
+curl http://door.local:8080/api/open/f23c7114-f6b7-4269-a5a0-a58dcd671952
+{"open": "1550962295.92"}
+```
 
 ## Development
 
