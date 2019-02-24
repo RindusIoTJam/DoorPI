@@ -3,7 +3,9 @@ import json
 import logging
 import os.path
 import random
+import signal
 import string
+import sys
 import tornado.escape
 import tornado.ioloop
 import tornado.log
@@ -129,7 +131,7 @@ class ApiHandler(tornado.web.RequestHandler):
         if Application.valid_apikey(apikey):
             DoorSocketHandler.handle_open()
             response = {'open': "%s" % time.time()}
-            tornado.log.access_log.warn("200 GET /api/%s (%s)", apikey, self.request.remote_ip)
+            logging.info("API open for %s (%s)" % (apikey, self.request.remote_ip))
             DoorSocketHandler.door.on()
             time.sleep(0.5)
             DoorSocketHandler.door.off()
@@ -237,8 +239,8 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
 
         message = {
             "action": "update",
-            "last_open": "%s" % Application.config()['_door.last.open'],
-            "last_ring": "%s" % Application.config()['_door.last.ring'],
+            "last_open": "%s" % Application.config('_door.last.open'),
+            "last_ring": "%s" % Application.config('_door.last.ring'),
             "timestamp": "%s" % time.time()
         }
 
@@ -291,7 +293,7 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             while True:
                 # Follow-up ring: reuse existing secret
                 if '_door.open.secret' in Application.config():
-                    secret = Application.config()['_door.open.secret']
+                    secret = Application.config('_door.open.secret')
                     break
 
             # Extend the time if another ring occurs
@@ -408,12 +410,38 @@ def date_time_string(timestamp=None):
     return s
 
 
-def main():
+def load_setup(signum=None, frame=None):
     config = load('doorpi.json')
     Application.set_config(config)
 
     apikeys = load('apikeys.json')
     Application.set_apikeys(apikeys)
+
+
+def handle_sigterm(signum=None, frame=None):
+    with open('doorpi_state.json', 'w') as settings_file:
+        json.dump({
+            "_door.last.open": "%s" % Application.config('_door.last.open'),
+            "_door.last.ring": "%s" % Application.config('_door.last.ring')
+        }, settings_file)
+    tornado.ioloop.IOLoop.current().stop()
+    SlackHandler.send('DoorPI stopped.')
+    sys.exit(0)
+
+
+def main():
+    signal.signal(signal.SIGUSR1, load_setup)
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
+    load_setup()
+
+    try:
+        with open('doorpi_state.json', 'r') as settings_file:
+            state = json.load(settings_file)
+            Application.config()['_door.last.open'] = state['_door.last.open']
+            Application.config()['_door.last.ring'] = state['_door.last.ring']
+    except IOError:
+        pass
 
     app = Application()
 
