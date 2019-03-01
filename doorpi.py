@@ -139,7 +139,8 @@ class ApiHandler(tornado.web.RequestHandler):
         """
 
         if Application.valid_apikey(apikey):
-            DoorSocketHandler.handle_open()
+            Application.config()['_door.last.open'] = "%s" % time.time()
+            time.sleep(0.5)
             response = {'open': "%s" % time.time()}
             logging.info("API open for %s (%s)" % (apikey, self.request.remote_ip))
             DoorSocketHandler.door.on()
@@ -279,11 +280,9 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         """
         timestamp = time.time()
 
-        print("ring: %s, last open: %s, distance: %s", timestamp, Application.config('_door.last.open')
-              , timestamp - int(Application.config('_door.last.open')))
-
-        if timestamp < int(Application.config('_door.last.open'))+2:
+        if timestamp - float(Application.config('_door.last.open')) < 1.0:
             logging.info("RING too close to last open")
+            return
         else:
             logging.info("handling RING")
 
@@ -439,6 +438,8 @@ def handle_sigterm(signum=None, frame=None):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
+
     signal.signal(signal.SIGUSR1, load_setup)
     signal.signal(signal.SIGTERM, handle_sigterm)
 
