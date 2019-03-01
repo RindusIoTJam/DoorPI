@@ -37,7 +37,17 @@ class Application(tornado.web.Application):
             static_path=os.path.join(os.path.dirname(__file__), "static"),
             xsrf_cookies=True,
         )
+        Application.setup_hw_interface()
         super(Application, self).__init__(handlers, **settings)
+
+    @classmethod
+    def setup_hw_interface(cls):
+        if DoorSocketHandler.door is None:
+            DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
+
+        if DoorSocketHandler.ring is None:
+            DoorSocketHandler.ring = Button(int(Application.config('gpio.ring')), hold_time=0.25)
+            DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring
 
     @classmethod
     def set_config(cls, config):
@@ -220,13 +230,6 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
     timeout_thread = None
 
     def __init__(self, *args, **kwargs):
-        if DoorSocketHandler.door is None:
-            DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
-
-        if DoorSocketHandler.ring is None:
-            DoorSocketHandler.ring = Button(int(Application.config('gpio.ring')), hold_time=0.25)
-            DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring
-
         super(DoorSocketHandler, self).__init__(*args, **kwargs)
 
     def get_compression_options(self):
@@ -274,9 +277,15 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         """
            Handle a ring event by enabling the _Open Door_ button for a given time
         """
-        logging.info("handling RING")
-
         timestamp = time.time()
+
+        print("ring: %s, last open: %s, distance: %s", timestamp, Application.config('_door.last.open')
+              , timestamp - int(Application.config('_door.last.open')))
+
+        if timestamp < int(Application.config('_door.last.open'))+2:
+            logging.info("RING too close to last open")
+        else:
+            logging.info("handling RING")
 
         Application.config()['_door.last.ring'] = "%s" % timestamp
 
