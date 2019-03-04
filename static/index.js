@@ -29,7 +29,9 @@ $(document).ready(function() {
     });
 
     Notification.requestPermission(function(status) {
-        console.log('Notification permission status:', status);
+        if (status === 'granted') {
+          console.log('Notification permission status:', status);
+        }
     });
 
     updater.start();
@@ -37,20 +39,11 @@ $(document).ready(function() {
 
 function notifyRing(date) {
     if (Notification.permission == 'granted') {
-        navigator.serviceWorker.getRegistration().then(function(registration) {
-            if(registration){
-                var options = {
-                    body: `Somebody knocked at ${date}!`,
-                    icon: 'images/example.png',
-                    vibrate: [100, 50, 100],
-                    data: {
-                        dateOfArrival: Date.now(),
-                        primaryKey: 1
-                    }
-                };
-                registration.showNotification('Ring Ring!', options);
-            }
-        });
+        var options = {
+            body: `Somebody rang (${date})`,
+            vibrate: [100, 50, 100],
+        };
+        new Notification("DING DONG ... RING RING ... KNOCK KNOCK", options);
     }
 }
 
