@@ -29,7 +29,7 @@ the name doorpi-agent
 ```Bash
 $ mkdir /usr/local/doorpi-agent
 $ cd /usr/local/doorpi-agent
-$ git clone https://github.com/RindusIoTJam/dooropener-Rpi0-.git .
+$ git clone https://github.com/RindusIoTJam/DoorPI.git .
 $ virtualenv venv
 $ source venv/bin/activate
 $ pip install -r requirements.txt

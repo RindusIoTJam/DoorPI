@@ -23,19 +23,42 @@ $(document).ready(function() {
     }, 1000);
 
     audioElement = document.createElement('audio');
-    audioElement.setAttribute('src', 'http://' + location.host + '/static/ding-dong.mp3');
+    audioElement.setAttribute('src', '//' + location.host + '/static/ding-dong.mp3');
     audioElement.addEventListener("canplay",function() {
         audioReady = true;
     });
 
+    Notification.requestPermission(function(status) {
+        console.log('Notification permission status:', status);
+    }
+
     updater.start();
 });
+
+function notifyRing(date) {
+    if (Notification.permission == 'granted') {
+        navigator.serviceWorker.getRegistration().then(function(registration) {
+            if(registration){
+                var options = {
+                    body: `Somebody knocked at ${date}!`,
+                    icon: 'images/example.png',
+                    vibrate: [100, 50, 100],
+                    data: {
+                        dateOfArrival: Date.now(),
+                        primaryKey: 1
+                    }
+                };
+                registration.showNotification('Ring Ring!', options);
+            }
+        });
+    }
+}
 
 function send(message) {
     updater.socket.send( JSON.stringify(message) );
 }
 
-function prettydate(utcSeconds) {
+function prettyDate(utcSeconds) {
     var d = new Date(0);
     d.setUTCSeconds(utcSeconds);
     return d.toString().substring(0, 24);
@@ -45,7 +68,11 @@ var updater = {
     socket: null,
 
     start: function() {
-        var url = "ws://" + location.host + "/door";
+        if (location.protocol != 'https:') {
+            var url = "ws://" + location.host + "/door";
+        } else {
+            var url = "wss://" + location.host + "/door";
+        }
         updater.secret = null
         updater.socket = new WebSocket(url);
         updater.socket.onmessage = function(event) {
@@ -60,18 +87,20 @@ var updater = {
                                     "with the document first. https://goo.gl/xX8pDD");
                     });
                 }
-                $('#last_ring').html(prettydate(JSON.parse(event.data)['timestamp']));
+                var pretty = prettyDate(JSON.parse(event.data)['timestamp']);
+                notifyRing(pretty);
+                $('#last_ring').html(pretty);
             }
             if( action == "open" ) {
                 $('#open').prop("disabled", true);
-                $('#last_open').html(prettydate(JSON.parse(event.data)['timestamp']));
+                $('#last_open').html(prettyDate(JSON.parse(event.data)['timestamp']));
             }
             if( action == "update" ) {
                 if ( JSON.parse(event.data)['last_open'].length > 0 ) {
-                    $('#last_open').html(prettydate(JSON.parse(event.data)['last_open']));
+                    $('#last_open').html(prettyDate(JSON.parse(event.data)['last_open']));
                 }
                 if ( JSON.parse(event.data)['last_ring'].length > 0 ) {
-                    $('#last_ring').html(prettydate(JSON.parse(event.data)['last_ring']));
+                    $('#last_ring').html(prettyDate(JSON.parse(event.data)['last_ring']));
                 }
             }
             if( action == 'timeout' ) {
@@ -91,7 +120,11 @@ var updater = {
                 om=updater.socket.onmessage;
                 oo=updater.socket.onopen;
                 oc=updater.socket.onclose;
-                updater.socket = new WebSocket("ws://" + location.host + "/door");
+                if (location.protocol != 'https:') {
+                    updater.socket = new WebSocket("ws://" + location.host + "/door");
+                } else {
+                    updater.socket = new WebSocket("wss://" + location.host + "/door");
+                }
                 updater.socket.onmessage=om;
                 updater.socket.onopen=oo;
                 updater.socket.onclose=oc;
