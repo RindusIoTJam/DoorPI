@@ -82,6 +82,13 @@ systemctl start doorpi-agent.service
 
 to enable start-on-boot and to also start the service now.
 
+### HTTPS
+ 
+The agent installation itself doesn't handle secure connections. This can
+e.g. be implemented with STunnel, Apache or NGINX. Please consult the 
+corresponding setup for the tool you selected. The frontend will automatically
+detect if it's running in a secure environment.
+
 ## Settings
 
 At the agent installation directory you can create a `local_settings.json`
@@ -142,8 +149,8 @@ curl http://door.local:8080/api/open/f23c7114-f6b7-4269-a5a0-a58dcd671952
 ### Simulation Mode
 
 If the requirement `RPi.GPIO` can't be fulfilled on the agent installation,
-the agent will switch into an emulation mode and add a `simulate ring` 
-button to the agents web user interface.
+the agent will switch into an emulation mode and add a `simulate ring` handler
+to the agents web user interface reachable at `https://door.local:8080/simulation`
 
 ### Templates
 
