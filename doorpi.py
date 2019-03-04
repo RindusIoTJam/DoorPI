@@ -18,8 +18,13 @@ import time
 import urllib2
 import validators
 
-from gpiozero import Button, DigitalOutputDevice
+simulation = False
 
+try:
+    from gpiozero import Button, DigitalOutputDevice
+except ImportError:
+    logging.warn("RUNNING IN SIMULATION MODE")
+    simulation = True
 
 class Application(tornado.web.Application):
     _config = None
@@ -31,6 +36,10 @@ class Application(tornado.web.Application):
                     (r"/api/open/(.*)", ApiHandler),
                     (r"/door",  DoorSocketHandler),
                     (r"/slack/(.*)", SlackHandler)]
+
+        if simulation:
+            handlers.append((r"/simulation", SimulationHandler))
+
         settings = dict(
             cookie_secret=Application.config('webui.cookie.secret'),
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
@@ -42,12 +51,15 @@ class Application(tornado.web.Application):
 
     @classmethod
     def setup_hw_interface(cls):
-        if DoorSocketHandler.door is None:
-            DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
+        try:
+            if DoorSocketHandler.door is None:
+                DoorSocketHandler.door = DigitalOutputDevice(int(Application.config('gpio.open')))
 
-        if DoorSocketHandler.ring is None:
-            DoorSocketHandler.ring = Button(int(Application.config('gpio.ring')), hold_time=0.25)
-            DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring
+            if DoorSocketHandler.ring is None:
+                DoorSocketHandler.ring = Button(int(Application.config('gpio.ring')), hold_time=0.25)
+                DoorSocketHandler.ring.when_pressed = DoorSocketHandler.handle_ring
+        except NameError:
+            pass
 
     @classmethod
     def set_config(cls, config):
@@ -143,9 +155,15 @@ class ApiHandler(tornado.web.RequestHandler):
             time.sleep(0.5)
             response = {'open': "%s" % time.time()}
             logging.info("API open for %s (%s)" % (apikey, self.request.remote_ip))
-            DoorSocketHandler.door.on()
-            time.sleep(0.5)
-            DoorSocketHandler.door.off()
+            try:
+                DoorSocketHandler.door.on()
+                time.sleep(0.5)
+                DoorSocketHandler.door.off()
+            except AttributeError, e:
+                if simulation:
+                    pass
+                else:
+                    logging.fatal(str(e) + " :: DoorSocketHandler.door not initialized.")
         else:
             response = {'error': "Unauthorized"}
             self.set_status(401)
@@ -222,6 +240,15 @@ class MainHandler(tornado.web.RequestHandler):
         self.render("index.html", config=Application.config())
 
 
+class SimulationHandler(tornado.web.RequestHandler):
+    """
+        Handles request to /
+    """
+
+    def get(self):
+        self.render("simulation.html", config=Application.config())
+
+
 class DoorSocketHandler(tornado.websocket.WebSocketHandler):
     waiters = set()
 
@@ -272,6 +299,9 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
                     logging.info("ignoring OPEN without correct ring secret")
             except KeyError:
                 logging.info("ignoring OPEN without any secret given")
+        elif payload['action'] == "simulate_ring":
+            if simulation:
+                DoorSocketHandler.handle_ring()
 
     @classmethod
     def handle_ring(cls):
@@ -280,11 +310,14 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         """
         timestamp = time.time()
 
-        if timestamp - float(Application.config('_door.last.open')) < 1.0:
-            logging.info("RING too close to last open")
-            return
-        else:
-            logging.info("handling RING")
+        try:
+            if timestamp - float(Application.config('_door.last.open')) < 1.0:
+                logging.info("RING too close to last open")
+                return
+            else:
+                logging.info("handling RING")
+        except ValueError:
+            pass
 
         Application.config()['_door.last.ring'] = "%s" % timestamp
 
@@ -335,14 +368,26 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         # TODO: put the on-sleep-off into a thread to mitigate impact on website delivery
 
         Application.config()['_door.last.open'] = "%s" % time.time()
-        DoorSocketHandler.door.on()
+        try:
+            DoorSocketHandler.door.on()
+        except AttributeError, e:
+            if simulation:
+                pass
+            else:
+                logging.fatal(str(e) + " :: DoorSocketHandler.door not initialized.")
 
         if Application.has_valid_slack_config(Application.config()):
             SlackHandler.send('@here DoorPI has opened the door.')
 
         time.sleep(0.5)
 
-        DoorSocketHandler.door.off()
+        try:
+            DoorSocketHandler.door.off()
+        except AttributeError, e:
+            if simulation:
+                pass
+            else:
+                logging.fatal(str(e))
 
     @classmethod
     def send_update(cls, message):
