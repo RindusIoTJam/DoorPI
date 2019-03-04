@@ -23,6 +23,7 @@ simulation = False
 try:
     from gpiozero import Button, DigitalOutputDevice
 except ImportError:
+    logging.basicConfig(level=logging.DEBUG)
     logging.warn("RUNNING IN SIMULATION MODE")
     simulation = True
 
