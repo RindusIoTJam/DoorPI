@@ -1,5 +1,8 @@
 image: python2.7_builder
 
+matrix:
+  - env: STAGE='tests'
+
 before_script:
   - sudo pip install -r requirements.txt
 
