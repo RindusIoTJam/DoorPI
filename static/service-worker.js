@@ -12,12 +12,6 @@ self.addEventListener('notificationclick', function(event) {
       }
     ));
   }
-  else if (event.action === 'reply') {
-    clients.openWindow("/messages?reply=" + messageId);
-  }
-  else {
-    clients.openWindow("/messages?reply=" + messageId);
-  }
 }, false);
 
 
