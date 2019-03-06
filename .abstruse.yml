@@ -5,9 +5,7 @@ matrix:
   - env: SCRIPT='tests/javascript.sh'
 
 before_script:
-  - virtualenv venv
-  - source venv/bin/activate
-  - pip install -r requirements.txt
+  - sudo pip install -r requirements.txt
 
 script:
   - if [[ "$SCRIPT" ]]; then ./$SCRIPT; fi
