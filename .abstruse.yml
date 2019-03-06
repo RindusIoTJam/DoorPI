@@ -1,0 +1,9 @@
+image: python2.7_builder
+
+matrix:
+  - env: SCRIPT='test_python_syntax'
+
+script:
+  - python --version
+
+cache:
