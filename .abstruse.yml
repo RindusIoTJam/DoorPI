@@ -1,13 +1,10 @@
 image: python2.7_builder
 
-matrix:
-  - env: SCRIPT='tests/python.sh'
-  - env: SCRIPT='tests/javascript.sh'
-
 before_script:
   - sudo pip install -r requirements.txt
 
 script:
-  - if [[ "$SCRIPT" ]]; then ./$SCRIPT; fi
+  - tests/python.sh
+  - tests/javascript.sh
 
 cache:
