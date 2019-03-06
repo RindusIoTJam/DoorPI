@@ -1,9 +1,13 @@
 image: python2.7_builder
 
 matrix:
-  - env: SCRIPT='test_python_syntax'
+  - env: SCRIPT='tests/python.sh'
+  - env: SCRIPT='tests/javascript.sh'
+
+before_script:
+  - pip install -r requirements.txt
 
 script:
-  - python --version
+  - if [[ "$SCRIPT" ]]; then ./$SCRIPT; fi
 
 cache:

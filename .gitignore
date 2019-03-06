@@ -110,6 +110,7 @@ venv.bak/
 local_settings.json
 apikeys.json
 doorpi_state.json
+pylintrc
 
 # Chrome extension - Rest Web Service Client to develop and test RESTful web service APIs
 # https://chrome.google.com/webstore/detail/rest-web-service-client/ecjfcmddigpdlehfhdnnnhfgihkmejin
