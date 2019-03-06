@@ -28,6 +28,16 @@ $(document).ready(function() {
         audioReady = true;
     });
 
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('static/service-worker.js').then(function(registration) {
+          // Registration was successful
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, function(err) {
+          // registration failed :(
+          console.log('ServiceWorker registration failed: ', err);
+        });
+    }
+
     Notification.requestPermission(function(status) {
         if (status === 'granted') {
           console.log('Notification permission status:', status);
@@ -39,15 +49,31 @@ $(document).ready(function() {
 
 function notifyRing(date) {
     if (Notification.permission == 'granted') {
-        var options = {
-            body: `Somebody rang (${date})`,
-            vibrate: [100, 50, 100],
-        };
-        new Notification("DING DONG ... RING RING ... KNOCK KNOCK", options);
+        navigator.serviceWorker.getRegistration('static/service-worker.js').then(function(registration) {
+            if(registration){
+                var options = {
+                    body: `Somebody rang ${date}!`,
+                    vibrate: [100, 50, 100],
+                    actions: [
+                       {action: 'open', title: 'Open the door'},
+                    ]
+                };
+                registration.showNotification('Ring Ring!', options);
+            }
+        });
     }
 }
 
+if('serviceWorker' in navigator){
+    // Handler for messages coming from the service worker
+    navigator.serviceWorker.addEventListener('message', function(event){
+        console.log("Client 1 Received Message: " + event.data);
+        event.ports[0].postMessage("Client 1 Says 'Hello back!'");
+    });
+}
+
 function send(message) {
+    console.log('sending', JSON.stringify(message));
     updater.socket.send( JSON.stringify(message) );
 }
 
