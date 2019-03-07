@@ -6,6 +6,10 @@ import random
 import signal
 import string
 import sys
+import threading
+import time
+import urllib2
+
 import tornado.escape
 import tornado.ioloop
 import tornado.log
@@ -13,9 +17,6 @@ import tornado.options
 import tornado.template
 import tornado.web
 import tornado.websocket
-import threading
-import time
-import urllib2
 import validators
 
 simulation = False
@@ -35,7 +36,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [(r"/", MainHandler),
                     (r"/api/open/(.*)", ApiHandler),
-                    (r"/door",  DoorSocketHandler),
+                    (r"/door", DoorSocketHandler),
                     (r"/slack/(.*)", SlackHandler)]
 
         if simulation:
@@ -400,7 +401,7 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
                 logging.error("Error sending message", exc_info=True)
 
 
-class TimeoutThread (threading.Thread):
+class TimeoutThread(threading.Thread):
     def __init__(self, timeout=60):
         threading.Thread.__init__(self)
         self.timeout = timeout
@@ -434,7 +435,7 @@ def load(filename):
     """
         Loads a JSON file and returns a dict.
     """
-    _dict={}
+    _dict = {}
 
     try:
         with open(filename, 'r') as settings_file:
