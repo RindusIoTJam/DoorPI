@@ -126,11 +126,13 @@ $(document).ready(function () {
         audioReady = true;
     });
 
-    Notification.requestPermission(function (status) {
-        if (status === 'granted') {
-            console.log('Notification permission status:', status);
-        }
-    });
+    if (location.protocol === 'https:') {
+        Notification.requestPermission(function (status) {
+            if (status === 'granted') {
+                console.log('Notification permission status:', status);
+            }
+        });
+    }
 
     updater.start();
 });
