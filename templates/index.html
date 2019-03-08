@@ -49,7 +49,9 @@
             lookup team id     https://api.slack.com/methods/team.info
             lookup channel id: https://api.slack.com/methods/channels.list
     -->
-    Slack channel: <a href="slack://channel?id={{ config.get('_slack.channel.id') }}&team={{ config.get('_slack.team.id') }}">#{{ config.get('_slack.channel') }}</a>
+    Slack channel: <a href="slack://channel?id={{ config.get('slack.channel.id')
+                                         }}&team={{ config.get('slack.team.id')
+                                         }}">#{{ config.get('slack.channel') }}</a>
    </div>
   </div>
   <div class="row bg-light">

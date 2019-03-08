@@ -225,7 +225,7 @@ class Application(tornado.web.Application):
                 Application._slack = True
             except KeyError:
                 Application._slack = False
-                logging.warn("Slack deactivated because setup for Slack is incomplete or incorrect.")
+                logging.warn("Slack deactivated because minimum setup for Slack is incomplete or incorrect.")
 
         return Application._slack
 
