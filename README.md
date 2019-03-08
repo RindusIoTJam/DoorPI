@@ -128,16 +128,33 @@ installation directory.
 Example:
 ```JSON
 {
-  "f23c7114-f6b7-4269-a5a0-a58dcd671952": "Description",
-  "0492af52-b10e-4be8-b378-f4986c10c1fa": "Description",
-  "25389c07-5902-4da5-a397-0c51b43f2846": "Description",
-  "88e8fb43-c762-4aa6-a72c-d5a0ed333f66": "Description",
-  "2a1298fc-a236-4662-a70c-c926b1054b55": "Description"
+  "f23c7114-f6b7-4269-a5a0-a58dcd671952": {
+    "type": "master",
+    "owner": "Gatekeeper (Can open the door at any moment)"
+  },
+  "0492af52-b10e-4be8-b378-f4986c10c1fa": {
+    "type": "restricted",
+    "owner": "Employee (Can open the door Mo-Fr 07:00-18:00)"
+  },
+  "25389c07-5902-4da5-a397-0c51b43f2846": {
+    "type": "limited",
+    "owner": "Guest (Can open the door Mo-Fr 07:00-18:00 within an given date range)",
+    "from": "01.04.2019",
+    "till": "01.05.2019"
+  },
+  "88e8fb43-c762-4aa6-a72c-d5a0ed333f66": {
+    "type": "once",
+    "owner": "Visitor (Can once-only open the door Mo-Fr 07:00-18:00 within an given date range)",
+    "from": "01.03.2019",
+    "till": "01.05.2019"
+  }
 }
 ```
 
 When a valid api-key is given a JSON result `{"open": "{timestamp}"}` will be returned,
-on invalid api-key `{'error': "Unauthorized"}` with HTTP status code 401.
+on invalid api-key `{'error': "Unauthorized"}` with HTTP status code 401. When a one-time
+key (`"type": "once"`) was used, it is written with a timestamp into the file `usedkeys.json`
+to ensure it isn't used any more.
 
 ```Bash
 curl http://door.local:8080/api/open/f23c7114-f6b7-4269-a5a0-a58dcd671952
