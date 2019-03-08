@@ -112,6 +112,8 @@ E.g.:
 | `gpio.ring`     | GPIO in-pin where the ring is detected. | `24` |
 | `slack.webhook` | If set this webhook will be used to post a ring message to Slack | |
 | `slack.channel` | Slack channel to post to. The default channel will be used if unset. | |
+| `slack.channel.id` | Slack channel id for Slack link generation at index.html | |
+| `slack.team.id` | Slack team id for Slack link generation at index.html | |
 | `slack.baseurl` | BaseURL of DoorPI. Usually `http://door.acme.com:[webui.port]` | |
 | `sentry.dsn` | For development purposes only. If it doesn't ring a bell, ignore this setting. ||
 

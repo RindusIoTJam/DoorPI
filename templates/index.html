@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
-  <title>{{ config['door.name'] }}</title>
+  <title>{{ config.get('door.name') }}</title>
  </head>
  <body class="container-fluid"{%
        try %}{%
-         if config['sentry.dsn'] %} onload="Sentry.init({ dsn: '{{ config['sentry.dsn'] }}' });"{%
+         if config.get('sentry.dsn') %} onload="Sentry.init({ dsn: '{{ config.get('sentry.dsn') }}' });"{%
          end %}{%
        except %}{%
        end %}>
   <div class="row bg-light">
    <div class="span6" style="float: none; margin: 0 auto;">
-    <h1 class="title">{{ config['door.name'] }}</h1>
+    <h1 class="title">{{ config.get('door.name') }}</h1>
    </div>
   </div>
   <div class="row">
@@ -27,11 +27,11 @@
      <tr><td colspan="3"><hr /></td></tr>
      <tr>
       <td>Last ring: </td>
-      <td id="last_ring">{{ config['_door.last.ring'] }}</td>
+      <td id="last_ring">{{ config.get('_door.last.ring') }}</td>
      </tr>
      <tr>
       <td>Last open: </td>
-      <td id="last_open">{{ config['_door.last.open'] }}</td>
+      <td id="last_open">{{ config.get('_door.last.open') }}</td>
      </tr>
      <tr><td colspan="3"><hr /></td></tr>
     </table>
@@ -49,7 +49,7 @@
             lookup team id     https://api.slack.com/methods/team.info
             lookup channel id: https://api.slack.com/methods/channels.list
     -->
-    Slack channel: <a href="slack://channel?id=CFZA33VSB&team=T24CP5ZUZ">#rindus-iot-playground</a>
+    Slack channel: <a href="slack://channel?id={{ config.get('_slack.channel.id') }}&team={{ config.get('_slack.team.id') }}">#{{ config.get('_slack.channel') }}</a>
    </div>
   </div>
   <div class="row bg-light">
