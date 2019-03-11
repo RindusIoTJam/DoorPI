@@ -11,6 +11,8 @@ import threading
 import time
 import urllib2
 
+from collections import Counter
+
 import tornado.escape
 import tornado.ioloop
 import tornado.log
@@ -43,7 +45,7 @@ class Application(tornado.web.Application):
         Init method
         """
         handlers = [(r"/", MainHandler),
-                    (r"/api/open/(.*)", ApiHandler),
+                    (r"/api/(.*)/(.*)", ApiHandler),
                     (r"/door", DoorSocketHandler),
                     (r"/slack/(.*)", SlackHandler)]
 
@@ -233,19 +235,95 @@ class Application(tornado.web.Application):
 class ApiHandler(tornado.web.RequestHandler):
     loader = None
 
-    def get(self, apikey=None):
+    def get(self, command=None, parameter=None):
         """
-        Handles get requests to /api/{apikey}
+        Handles get requests to /api/{command}/{apikey}
 
-        :param apikey: Everything in query_path behind /api/
-        :type apikey: str
+        :param command: The string in query_path behind /api/ and before next /
+        :type command: str
+        :param parameter: Everything in query_path behind /api/{command}/
+        :type parameter: str
         """
+        if command == 'open':
+            self.__handle_open(parameter)
 
-        if Application.valid_apikey(apikey):
+        elif command.startswith('hero'):
+            self.__handle_hero(command, parameter)
+        else:
+            self.set_header('Content-Type', 'text/json')
+            self.write({'error': "Unknown API command."})
+            self.finish()
+
+    def __handle_hero(self, command, parameter):
+        """
+        Handles an api open request
+        :param command: Everything in query_path behind /api/hero/
+        :type command: str
+        """
+        epoch = datetime.datetime.utcfromtimestamp(0)
+
+        if command == 'hero' and parameter in ['day', 'week', 'month']:
+            count = 1
+            timestamp = datetime.datetime.now().replace(hour=0, minute=0, second=0)
+
+            if parameter == 'week':
+                timestamp = timestamp.replace(day=(timestamp.day - timestamp.weekday()))
+                count = 3
+
+            if parameter == 'month':
+                timestamp = timestamp.replace(day=1)
+                count = 5
+
+            result = DoorHero.top_hero((timestamp - epoch).total_seconds(), count)
+
+            self.set_header('Content-Type', 'text/json')
+            self.write({'%s-hero' % parameter: result})
+            self.finish()
+        elif command == 'hero/post' and self.request.remote_ip == '127.0.0.1':
+            timestamp = datetime.datetime.now().replace(hour=0, minute=0, second=0)
+
+            if parameter == 'day':
+                day_result = DoorHero.top_hero((timestamp - epoch).total_seconds(), 1)
+                SlackHandler.send("Door-Heroes",
+                                  template_file='heroes.json',
+                                  day_result=day_result)
+
+            elif parameter == 'week':
+                timestamp = timestamp.replace(day=(timestamp.day - timestamp.weekday()))
+                week_result = DoorHero.top_hero((timestamp - epoch).total_seconds(), 3)
+                SlackHandler.send("Door-Heroes",
+                                  template_file='heroes.json',
+                                  week_result=week_result)
+
+            elif parameter == 'month':
+                timestamp = timestamp.replace(day=1)
+                month_result = DoorHero.top_hero((timestamp - epoch).total_seconds(), 5)
+                SlackHandler.send("Door-Heroes",
+                                  template_file='heroes.json',
+                                  month_result=month_result)
+            else:
+                self.set_status(400)
+                self.set_header('Content-Type', 'text/json')
+                self.write({'error': "Bad request"})
+                self.finish()
+
+        else:
+            self.set_status(400)
+            self.set_header('Content-Type', 'text/json')
+            self.write({'error': "Bad request"})
+            self.finish()
+
+    def __handle_open(self, api_key):
+        """
+        Handles an api open request
+        :param api_key: Everything in query_path behind /api/open/
+        :type api_key: str
+        """
+        if Application.valid_apikey(api_key):
             Application.config()['_door.last.open'] = "%s" % time.time()
             time.sleep(0.5)
             response = {'open': "%s" % time.time()}
-            logging.info("API open for %s (%s)" % (apikey, self.request.remote_ip))
+            logging.info("API open for %s (%s)" % (api_key, self.request.remote_ip))
             try:
                 DoorSocketHandler.door.on()
                 time.sleep(0.5)
@@ -263,7 +341,6 @@ class ApiHandler(tornado.web.RequestHandler):
         self.write(response)
         self.finish()
 
-
 class SlackHandler(tornado.web.RequestHandler):
     loader = None
 
@@ -275,7 +352,8 @@ class SlackHandler(tornado.web.RequestHandler):
         :type secret: str
         """
         do_open = False
-        if secret == Application.config().pop('_door.open.secret', None):
+        if DoorSocketHandler.timeout_thread is not None and secret == Application.config('_door.open.secret'):
+            Application.config().pop('_door.open.secret', None)
             payload = {
                 "action": "open",
                 "timestamp": "%s" % time.time()
@@ -288,32 +366,37 @@ class SlackHandler(tornado.web.RequestHandler):
         self.render("slack.html", config=Application.config(), opened=do_open)
         if do_open:
             DoorSocketHandler.handle_open()
+            DoorHero.register_open(address=self.request.remote_ip)
 
     @classmethod
-    def send(cls, text, open_link=None):
+    def send(cls, text, open_link=None, template_file='slack.json', **kwargs):
         """
 
         :param text: The message
         :param open_link: The open link
+        :param template_file: The slack message template to use
         :type text: str
         :type open_link: str
+        :type template_file: str
         """
 
         if Application.has_valid_slack_config(Application.config()):
 
-            template_file = 'slack.json'
+            # template_file = 'slack.json'
             try:
                 message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
                                                                            username=Application.config('door.name'),
                                                                            text=text,
-                                                                           open_link=open_link)
+                                                                           open_link=open_link,
+                                                                           kwargs=kwargs)
             except AttributeError:
                 SlackHandler.loader = tornado.template.Loader(os.path.join(os.path.dirname(__file__), "templates"),
                                                               autoescape=None)
                 message = SlackHandler.loader.load(template_file).generate(channel=Application.config('slack.channel'),
                                                                            username=Application.config('door.name'),
                                                                            text=text,
-                                                                           open_link=open_link)
+                                                                           open_link=open_link,
+                                                                           kwargs=kwargs)
             try:
                 req = urllib2.Request(Application.config('slack.webhook'),
                                       data=message,
@@ -388,17 +471,18 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
             "timestamp": "%s" % time.time()
         })
 
-        if payload['action'] == "open":
+        if payload.get('action') == "open":
             try:
-                if payload['secret'] == Application.config().pop('_door.open.secret', None):
+                if payload.get('secret') == Application.config().pop('_door.open.secret', None):
                     payload.pop('secret', None)
                     DoorSocketHandler.send_update(tornado.escape.json_encode(payload))
                     self.handle_open()
+                    DoorHero.register_open(hero=payload.get('hero'), address=self.request.remote_ip)
                 else:
                     logging.info("ignoring OPEN without correct ring secret")
             except KeyError:
                 logging.info("ignoring OPEN without any secret given")
-        elif payload['action'] == "simulate_ring":
+        elif payload.get('action') == "simulate_ring":
             if SIMULATION:
                 DoorSocketHandler.handle_ring()
 
@@ -496,6 +580,46 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
                 waiter.write_message(message)
             except:
                 logging.error("Error sending message", exc_info=True)
+
+
+class DoorHero(object):
+    _lock = threading.Lock()
+
+    @classmethod
+    def register_open(cls, hero=None, address=None):
+        with DoorHero._lock:
+            try:
+                with open('door-heroes.json', 'r') as heroes_file:
+                    heroes = json.load(heroes_file)
+            except IOError:
+                heroes = {}
+            if hero == "":
+                hero = "Unknown heroes"
+            if hero is None:
+                hero = "Unknown Slack heroes"
+
+            heroes.update({"%s" % time.time(): "%s" % hero})
+
+            with open('door-heroes.json', 'w') as heroes_file:
+                json.dump(heroes, heroes_file)
+
+    @classmethod
+    def top_hero(cls, timestamp, count):
+        timestamp = float(timestamp)
+        with DoorHero._lock:
+            try:
+                with open('door-heroes.json', 'r') as heroes_file:
+                    open_heroes = json.load(heroes_file)
+            except IOError:
+                open_heroes = {}
+
+            top_heroes = []
+
+            for open_timestamp in open_heroes:
+                if float(open_timestamp) > timestamp:
+                    top_heroes.append(open_heroes.get(open_timestamp))
+
+            return Counter(top_heroes).most_common(count)
 
 
 class TimeoutThread(threading.Thread):

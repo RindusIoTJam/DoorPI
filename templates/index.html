@@ -52,12 +52,37 @@
     Slack channel: <a href="slack://channel?id={{ config.get('slack.channel.id')
                                          }}&team={{ config.get('slack.team.id')
                                          }}">#{{ config.get('slack.channel') }}</a>
+    // DoorHero: <a href="#" data-toggle="modal" data-target="#doorHeroModal">Join</a>
    </div>
   </div>
   <div class="row bg-light">
    <div class="span6 small" id="message" style="float: none; margin: 0 auto;">
     <div id="alert" class="alert alert-danger collapse" role="alert"></div>
    </div>
+  </div>
+  <!-- Modal -->
+  <div class="modal fade" id="doorHeroModal" tabindex="-1" role="dialog" aria-labelledby="doorHeroModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <em class="modal-title" id="doorHeroModalLabel">Wanna be a Door-Hero?</em>
+        </div>
+        <div class="modal-body small">
+          Register your browser with whatever name (can also be shared name within a team or with a couple
+          of sidekicks) and every door-open will be counted for that name. At 18:00 EOD, EOW and EOM the top
+          5 door-heros will be posted on the Slack channel
+          <a href="slack://channel?id={{ config.get('slack.channel.id')
+                                }}&team={{ config.get('slack.team.id')
+                                }}">#{{ config.get('slack.channel') }}</a>.
+        </div>
+        <div class="modal-body small">
+          <input class="form-control form-control-sm" type="text" id="hero" placeholder="Enter hero name..."/>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="register" class="btn btn-primary btn-block btn-sm">Join / Update</button>
+        </div>
+      </div>
+    </div>
   </div>
 {% try %}
  {% if config['sentry.dsn'] %}
