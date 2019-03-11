@@ -102,6 +102,10 @@ function send(message) {
 $(document).ready(function () {
     "use strict";
     $('#open').prop("disabled", true);
+    if (localStorage.getItem('hero') !== null) {
+        console.log(localStorage.getItem('hero'));
+        $('#doorHeroModal #hero').val(localStorage.getItem('hero'));
+    }
 
     if (!window.console) { window.console = { /* NOP*/ }; }
     if (!window.console.log) { window.console.log = { /* NOP*/ }; }
@@ -109,7 +113,12 @@ $(document).ready(function () {
     $('button').click(function (event) {
         if (event.target.id === "open") {
             $('#open').prop("disabled", true);
-            send({"action": event.target.id, "secret": updater.secret });
+            send({"action": event.target.id, "secret": updater.secret, "hero": $('#doorHeroModal #hero').val().trim() });
+        } else if (event.target.id === "register") {
+            send({"action": event.target.id, "hero": $('#doorHeroModal #hero').val().trim() });
+            localStorage.setItem('hero', $('#doorHeroModal #hero').val().trim());
+            $('#doorHeroModal').modal('toggle');
+
         } else {
             send({"action": event.target.id });
         }
