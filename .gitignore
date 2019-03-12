@@ -111,7 +111,6 @@ local_settings.json
 apikeys.json
 usedkeys.json
 doorpi_state.json
-door-heroes.json
 pylintrc
 
 # Chrome extension - Rest Web Service Client to develop and test RESTful web service APIs
