@@ -449,6 +449,7 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
         if Application.has_valid_slack_config(Application.config()):
             open_link = "%s/slack/%s" % (Application.config('slack.baseurl'), secret)
             SlackHandler.send('@here DING DONG ... RING RING ... KNOCK KNOCK', open_link)
+            time.sleep(60)
 
     @classmethod
     def handle_open(cls):
@@ -476,7 +477,7 @@ class DoorSocketHandler(tornado.websocket.WebSocketHandler):
                 logging.fatal(str(e) + " :: DoorSocketHandler.door not initialized.")
 
         if Application.has_valid_slack_config(Application.config()):
-            SlackHandler.send('@here DoorPI has opened the door.')
+            SlackHandler.send('DoorPI has opened the door.')
 
         time.sleep(0.5)
 
