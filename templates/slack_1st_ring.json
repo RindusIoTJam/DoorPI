@@ -1,0 +1,20 @@
+{
+  "channel": "{{ app.get('slack.channel') }}",
+  "username": "{{ app.get('door.name') }}",
+  "icon_emoji": ":door:",
+  "link_names": 1,
+  "attachments": [
+    {
+      "text": "{{ text }}",
+      "color": "#3aa3e3",
+      "fallback": "{{ app.get('slack.baseurl') }}/slack/{{ secret }}",
+      "actions": [
+        {
+          "type": "button",
+          "text": "----> Open Door <----",
+          "url": "{{ app.get('slack.baseurl') }}/slack/{{ secret }}"
+        }
+      ]
+    }
+  ]
+}

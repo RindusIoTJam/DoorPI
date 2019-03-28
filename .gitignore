@@ -106,14 +106,9 @@ venv.bak/
 # PyCham IDE
 .idea
 
-# local settings
+# DoorPI stuff
+main.json
 local_settings.json
 apikeys.json
-usedkeys.json
-doorpi_state.json
-pylintrc
-
-# Chrome extension - Rest Web Service Client to develop and test RESTful web service APIs
-# https://chrome.google.com/webstore/detail/rest-web-service-client/ecjfcmddigpdlehfhdnnnhfgihkmejin
-# Sample Requests for later use
-FavoriteRequests.json
+apikeys_used.json
+last.json

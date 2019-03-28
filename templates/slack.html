@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html>
- <head>
+ <head profile="http://www.w3.org/2005/10/profile">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" href="https://iot.rindus.de/favicon.ico">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
-  <title>{{ config['door.name'] }}</title>
+  <title>{{ app.get('door.name') }}</title>
  </head>
  <body class="container-fluid"{%
        try %}{%
-         if config['sentry.dsn'] %} onload="Sentry.init({ dsn: '{{ config['sentry.dsn'] }}' });"{%
+         if app.get('sentry.dsn') %} onload="Sentry.init({ dsn: '{{ app.get('sentry.dsn') }}' });"{%
          end %}{%
        except %}{%
        end %}>
   <div class="row bg-light">
    <div class="span6" style="float: none; margin: 0 auto;">
-    <h1 class="title">{{ config['door.name'] }}</h1>
+    <h1 class="title">{{ app.get('door.name') }}</h1>
    </div>
   </div>
   <div class="row bg-light">
@@ -27,7 +28,7 @@
    </div>
   </div>
 {% try %}
- {% if config['sentry.dsn'] %}
+ {% if app.get('sentry.dsn') %}
   <script src="https://browser.sentry-cdn.com/4.5.3/bundle.min.js" crossorigin="anonymous"></script>
  {% end %}
 {% except %}
