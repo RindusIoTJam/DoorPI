@@ -10,7 +10,7 @@ import tornado.escape
 import tornado.ioloop
 import tornado.web
 
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 from core.doorphone import DoorPhone
 from core.callbacks import Callback
@@ -199,6 +199,11 @@ def handle_sigterm(signum=None, frame=None):
         DoorPhone.instance().timeout_thread.stop()
 
     tornado.ioloop.IOLoop.current().stop()
+
+    # Inform Slack
+    if SlackHandler.validate(app):
+        SlackHandler.send(app, "slack_doorpi.json", "DoorPI stopped")
+
     sys.exit(0)
 
 
@@ -218,6 +223,10 @@ def main():
     signal.signal(signal.SIGTERM, handle_sigterm)
 
     app.listen(port=app.get('listen.port'))
+
+    # Inform Slack
+    if SlackHandler.validate(app):
+        SlackHandler.send(app, "slack_doorpi.json", "DoorPI started (%s)" % app.get('slack.baseurl'))
 
     try:
         tornado.ioloop.IOLoop.current().start()

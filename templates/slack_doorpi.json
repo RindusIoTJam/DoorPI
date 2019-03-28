@@ -6,7 +6,7 @@
   "attachments": [
     {
       "footer": "{{ text }}",
-      "color": "#28B463",
+      "color": "#34495E",
       "fallback": "{{ text }}"
     }
   ]

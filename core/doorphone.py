@@ -4,6 +4,8 @@ import threading
 import uuid
 import asyncio
 
+from gpiozero.exc import BadPinFactory
+
 try:
     from .callbacks import Callback
 except ModuleNotFoundError:
@@ -57,6 +59,10 @@ class DoorPhone(object):
                         DoorPhone._instance.gpio_open = gpio_open
                         DoorPhone._instance.open_dev = DigitalOutputDevice(gpio_open)
                         DoorPhone._instance.ring_dev = Button(gpio_ring, hold_time=0.25)
+                    except BadPinFactory:
+                        # RUNNING IN SIMULATION MODE
+                        DoorPhone._instance.open_dev = None
+                        DoorPhone._instance.ring_dev = None
                     except NameError:
                         # RUNNING IN SIMULATION MODE
                         DoorPhone._instance.open_dev = None

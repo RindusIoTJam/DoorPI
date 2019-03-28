@@ -6,7 +6,7 @@
   "attachments": [
     {
       "text": "{{ text }}",
-      "color": "#3aa3e3",
+      "color": "#D50000",
       "fallback": "{{ app.get('slack.baseurl') }}/slack/{{ secret }}",
       "actions": [
         {
