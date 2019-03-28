@@ -1,11 +1,11 @@
 [Unit]
-Description=DoorPi-Agent
+Description=DoorPi
 After=multi-user.target
 
 [Service]
 Type=idle
-WorkingDirectory=/usr/local/doorpi-agent
-ExecStart=/usr/local/doorpi-agent/venv/bin/python doorpi.py
+WorkingDirectory=/opt/doorpi
+ExecStart=/opt/doorpi/venv/bin/python main.py
 ExecReload=/bin/kill -SIGUSR1 $MAINPID
 
 [Install]

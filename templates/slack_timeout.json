@@ -1,0 +1,13 @@
+{
+  "channel": "{{ app.get('slack.channel') }}",
+  "username": "{{ app.get('door.name') }}",
+  "icon_emoji": ":door:",
+  "link_names": 1,
+  "attachments": [
+    {
+      "footer": "{{ text }}",
+      "color": "#ff0000",
+      "fallback": "{{ text }}"
+    }
+  ]
+}
