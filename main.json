@@ -1,0 +1,4 @@
+{
+  "doorpi.listen.port": "8080",
+  "doorpi.door.name":   "Example Door"
+}
